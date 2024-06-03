@@ -1,15 +1,12 @@
-volumes:
- solana-rust-dapp-sync:
-   external: true
-
 services:
- blockchain:
-   platform: linux/x86-64
-   build:
-    context: .
-    dockerfile: blockchain/Dockerfile
-   volumes:
-     - solana-rust-dapp-sync:/usr/src/app
-   ports:
-     - "7878:7878"
-   tty: true
+  blockchain:
+    platform: linux/x86-64
+    build:
+      context: .
+      dockerfile: blockchain/Dockerfile
+    volumes:
+      - ./blockchain:/usr/src/app
+    ports:
+      - "7878:7878"
+    tty: true
+
