@@ -9,9 +9,9 @@ services:
     tty: true
     environment:
       - HOST=0.0.0.0
-      - port=3000
+      # - PORT=3000
       - CHOKIDAR_USEPOLLING=true
-    command: sh -c "pnpm dev"
+    command: sh -c "yarn dev"
   blockchain:
     platform: linux/x86-64
     build:
