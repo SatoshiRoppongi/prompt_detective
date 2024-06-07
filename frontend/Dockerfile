@@ -5,18 +5,26 @@ ENV TZ Asia/Tokyo
 
 WORKDIR /frontend
 
-RUN npm install -g pnpm
+# Yarnの公式リポジトリを追加する
+RUN apt-get update && \
+    apt-get install -y gnupg && \
+    apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg && \
+    echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    apt-get update
+
+RUN apt-get install -y yarn
 
 COPY . /frontend
 
 RUN rm -rf .git/
 RUN rm -rf node_modules
 
-RUN pnpm install
+# RUN pnpm install
+RUN yarn
 
 # RUN npx nuxi upgrade --force
 
-EXPOSE 3000
-EXPOSE 24678
+# EXPOSE 3000
+# EXPOSE 24678
 
 # CMD ["pnpm", "dev"]

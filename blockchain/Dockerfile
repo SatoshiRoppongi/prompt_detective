@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 # 必要なファイルのみコピー
 COPY blockchain .
 
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl procps
 
 # Solanaのインストール
 RUN sh -c "$(curl -sSfL https://release.solana.com/v1.18.15/install)"
