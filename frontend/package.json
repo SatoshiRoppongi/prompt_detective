@@ -11,14 +11,16 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
-    "@nuxtjs/vuetify": "^1.12.3",
     "@solana/web3.js": "^1.92.0",
     "h3": "^1.11.1",
     "jayson": "^4.1.0",
     "nuxt": "^3.11.2",
     "vue": "^3.4.27",
     "vue-router": "^4.3.2",
-    "vuetify": "^3.6.0-beta.0.0",
+    "vuetify": "^3.6.8",
     "whatwg-url": "^14.0.0"
+  },
+  "devDependencies": {
+    "vite-plugin-vuetify": "^2.0.3"
   }
 }
