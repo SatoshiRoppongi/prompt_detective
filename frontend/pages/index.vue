@@ -1,7 +1,7 @@
 <template>
     <v-app>
         <v-app-bar app>
-            <v-toolbar-title>Web3 Service</v-toolbar-title>
+            <v-toolbar-title>プロンプト探偵</v-toolbar-title>
             <v-spacer></v-spacer>
             <v-btn @click="connectWallet">Connect Wallet</v-btn>
         </v-app-bar>
@@ -22,7 +22,9 @@
                         </v-card>
                     </v-col>
                     <v-col cols="6">
+                        <!--
                         <v-img src="path/to/your/image.jpg" aspect-ratio="1.77"></v-img>
+                    -->
                         <v-form @submit.prevent="submitForm">
                             <v-text-field v-model="input" label="Input"></v-text-field>
                             <v-btn type="submit">Submit</v-btn>
@@ -50,6 +52,8 @@ const input = ref('')
 const connectWallet = async () => {
     try {
         const { solana } = window as any
+        console.log('aaa')
+        console.log(solana)
         if (solana && solana.isPhantom) {
             await solana.connect()
             console.log('Connected to wallet:', solana.publicKey.toString())

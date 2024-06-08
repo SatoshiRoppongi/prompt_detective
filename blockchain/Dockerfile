@@ -19,3 +19,5 @@ ENV PATH="/root/.local/share/solana/install/active_release/bin:$PATH"
 # Solanaのバージョン確認
 RUN solana --version
 
+# anchorのインストール
+# RUN cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install && avm use latest
