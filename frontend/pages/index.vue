@@ -46,6 +46,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import {
+    TransactionInstruction,
+    PublicKey,
+    sendAndConfirmTransaction,
+    Transaction,
+    Connection,
+    Account
+} from '@solana/web3.js';
+
+const { $solana } = useNuxtApp()
 
 const input = ref('')
 
@@ -65,10 +75,61 @@ const connectWallet = async () => {
     }
 }
 
-const submitForm = () => {
-    // Form submission logic
-    console.log('Form submitted with input:', input.value)
+const test = (connection, account) => {
+    const instruction = new TransactionInstruction({
+        keys: [],
+        // sampleプログラムのID
+        programId: new PublicKey('63687Zt1ikkr3ZPTdvPZ6qpbThnWzkzkgqubKVcYFLoE'),
+        data: '',
+    });
+    console.log("account:", account.publicKey.toBase58())
+    sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(instruction),
+        [account],
+        {
+            skipPreflight: true,
+            commitment: "confirmed",
+        },
+    ).then(() => { console.log("done 20240610") }).catch((e) => (console.log('error', e)));
 }
+
+
+const submitForm = async () => {
+    console.log('Form submitted with input:', input.value);
+
+    // プログラムを実行するためのアカウント作成
+    const account = new Account();
+    const lamports = 2 * 1000000000;
+
+    try {
+        await requestAirdropWithRetry(account.publicKey, lamports);
+        console.log("test airdrop done 20240610");
+        test($solana.connection, account);
+    } catch (e) {
+        console.error('Error in submitForm:', e);
+    }
+}
+
+const requestAirdropWithRetry = async (publicKey, lamports, retries = 5, delay = 500) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            console.log(`Attempt ${i + 1}: Requesting airdrop...`);
+            const signature = await $solana.connection.requestAirdrop(publicKey, lamports);
+            await $solana.connection.confirmTransaction(signature);
+            return;
+        } catch (e) {
+            if (i < retries - 1) {
+                console.log(`Server responded with 429. Retrying after ${delay}ms delay...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+            } else {
+                throw e;
+            }
+        }
+    }
+}
+
 </script>
 
 <style scoped>
