@@ -6,25 +6,30 @@ ENV TZ Asia/Tokyo
 WORKDIR /frontend
 
 # Yarnの公式リポジトリを追加する
+# RUN apt-get update && \
+#     apt-get install -y gnupg && \
+#     apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg && \
+#     echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+#     apt-get update
+
+# 必要なパッケージのインストールとYarnの設定
 RUN apt-get update && \
-    apt-get install -y gnupg && \
-    apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg && \
-    echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    apt-get update
+    apt-get install -y gnupg curl && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    apt-get update && \
+    apt-get install -y yarn && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install -y yarn
+# RUN apt-get install -y yarn
 
-COPY . /frontend
+COPY . .
 
-RUN rm -rf .git/
-RUN rm -rf node_modules
+RUN rm -rf .git node_modules
 
-# RUN pnpm install
-RUN yarn
+RUN yarn install
 
-# RUN npx nuxi upgrade --force
+EXPOSE 3000
 
-# EXPOSE 3000
-# EXPOSE 24678
-
-# CMD ["pnpm", "dev"]
+CMD ["yarn", "dev"]
