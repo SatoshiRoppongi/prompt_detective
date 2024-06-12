@@ -1,21 +1,39 @@
 <template>
-    <v-btn @click="connectWallet" rounded="lg" size="x-large">
-        <template v-if="walletAddress" v-slot:prepend>
-            <Identicon :value="walletAddress" size="20" />
-            {{ balance }} SOL
+    <v-menu>
+        <template v-slot:activator="{ props }">
+        <v-btn @click="connectWallet" rounded="lg" size="x-large" v-bind="props">
+            <template v-if="walletAddress" v-slot:prepend>
+                {{ balance }} sol
+                <Identicon :value="walletAddress" size="20" />
+            </template>
+            <template v-if="!walletAddress" v-slot:default>
+                Connect Wallet
+            </template>
+        </v-btn>
         </template>
-        <template v-if="!walletAddress" v-slot:default>
-            Connect Wallet
-        </template>
-    </v-btn>
+        <v-list>
+            <v-list-item
+              v-for="(item, index) in items"
+              :key="index"
+              :value="index"
+            >
+              <v-list-item-title>{{ item.title }} </v-list-item-title>
+            </v-list-item>
+        </v-list>
+    </v-menu>
 </template>
 
 <script setup lang="ts">
 import { useWallet } from '~/composables/useWallets'
 
 const { walletAddress, balance, connectWallet } = useWallet()
-console.log('test')
-console.log(balance.value)
+
+const items = ref([
+    {title: 'click me'},
+    {title: 'click me2'},
+    {title: 'click me3'},
+    {title: 'disconnected'},
+])
 
 </script>
 
