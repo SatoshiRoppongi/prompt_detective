@@ -3,7 +3,7 @@
         <v-app-bar app>
             <v-toolbar-title>プロンプト探偵</v-toolbar-title>
             <v-spacer></v-spacer>
-            <v-btn @click="connectWallet">Connect Wallet</v-btn>
+            <connectWalletButton />
         </v-app-bar>
         <v-main>
             <v-container>
@@ -54,6 +54,8 @@ import {
     Connection,
     Account
 } from '@solana/web3.js';
+
+import connectWalletButton from '~/components/ConnectWalletButton'
 
 const { $solana } = useNuxtApp()
 
