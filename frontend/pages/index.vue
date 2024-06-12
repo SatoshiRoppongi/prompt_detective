@@ -25,10 +25,19 @@
                         <!--
                         <v-img src="path/to/your/image.jpg" aspect-ratio="1.77"></v-img>
                     -->
-                        <v-form @submit.prevent="submitForm">
+                        <v-img
+                            lazy-src="https://oaidalleapiprodscus.blob.core.windows.net/private/org-WZB1pNkPUHzh6UvEIAbkeSpi/user-5riXo2d62EoWc13ZqQ7FDjQE/img-prxolspv0ltdoBIQrsmyATHO.png?st=2024-06-12T07%3A31%3A04Z&se=2024-06-12T09%3A31%3A04Z&sp=r&sv=2023-11-03&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-06-11T19%3A02%3A36Z&ske=2024-06-12T19%3A02%3A36Z&sks=b&skv=2023-11-03&sig=qLE4rmyQH3zjeHkpCaoHmU4aGA%2BqoGslnEEQfasoA9o%3D"
+                            src="https://oaidalleapiprodscus.blob.core.windows.net/private/org-WZB1pNkPUHzh6UvEIAbkeSpi/user-5riXo2d62EoWc13ZqQ7FDjQE/img-prxolspv0ltdoBIQrsmyATHO.png?st=2024-06-12T07%3A31%3A04Z&se=2024-06-12T09%3A31%3A04Z&sp=r&sv=2023-11-03&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-06-11T19%3A02%3A36Z&ske=2024-06-12T19%3A02%3A36Z&sks=b&skv=2023-11-03&sig=qLE4rmyQH3zjeHkpCaoHmU4aGA%2BqoGslnEEQfasoA9o%3D""
+                            >
+
+
+                        </v-img>
+                        
+
+                        <v-form @submit.prevent=" submitForm">
                             <v-text-field v-model="input" label="Input"></v-text-field>
                             <v-btn type="submit">Submit</v-btn>
-                        </v-form>
+                            </v-form>
                     </v-col>
                     <v-col cols="3">
                         <v-card>
