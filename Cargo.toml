@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "blockchain/sample/",
+    # 他のサブプロジェクトがあればここに追加
+]
