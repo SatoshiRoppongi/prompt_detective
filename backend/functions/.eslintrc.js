@@ -29,5 +29,6 @@ module.exports = {
     "quotes": ["error", "double"],
     "import/no-unresolved": 0,
     "indent": ["error", 2],
+    "require-jsdoc": "off", // 一旦無効化する。将来有効化するかも？
   },
 };
