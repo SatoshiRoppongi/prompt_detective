@@ -17,8 +17,8 @@ pub struct GameState {
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum GameInstruction {
-  JoinGame,
-  SetScores {scores: Vec<(Pubkey, u64)> },
+  JoinGame { entry_fee: u64 },
+  SetScores { scores: Vec<(Pubkey, u64)> },
 }
 
 // solana-program-sdkの `entrypoint` を呼び出し。
@@ -34,17 +34,23 @@ fn process_instruction(
   let accounts_iter = &mut accounts.iter();
 
   match instruction {
-    GameInstruction::JoinGame => {
+    GameInstruction::JoinGame { entry_fee } => {
       let player_account = next_account_info(accounts_iter)?;
       let game_state_account = next_account_info(accounts_iter)?;
 
+      if **player_account.lamports.borrow() < entry_fee {
+        return Err(ProgramError::InsufficientFunds);
+      }
+
       let mut game_state: GameState = GameState::try_from_slice(&game_state_account.data.borrow())?;
       game_state.players.push(*player_account.key);
-      game_state.scores.push(0); // 初期分配は0
-      game_state.pot += player_account.lamports();
+      game_state.scores.push(0); // 初期スコアは0
+      game_state.pot += entry_fee;
+
+      **player_account.lamports.borrow_mut() -= entry_fee;
 
       game_state.serialize(&mut &mut game_state_account.data.borrow_mut()[..])?;
-      msg!("Players {:?} joined the game!", player_account.key);
+      msg!("Player {:?} joined the game with an entry fee of {}!", player_account.key, entry_fee);
     }
     GameInstruction::SetScores { scores } => {
       let game_state_account = next_account_info(accounts_iter)?;
@@ -60,7 +66,7 @@ fn process_instruction(
         }
       }
 
-      // scoreに基づいてSOLを分配
+      // スコアに基づいてSOLを分配
       let total_score: u64 = game_state.scores.iter().sum();
       for (i, player) in game_state.players.iter().enumerate() {
         let player_account = next_account_info(accounts_iter)?;
