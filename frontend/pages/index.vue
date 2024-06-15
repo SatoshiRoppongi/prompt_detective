@@ -120,6 +120,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from "vue";
+import { useRuntimeConfig } from "#app";
 import { mdiHelp, mdiArrowDownThick } from "@mdi/js";
 
 import connectWalletButton from "~/components/ConnectWalletButton";
@@ -155,10 +156,14 @@ const closeModal = () => {
   showDialog.value = false;
 };
 
+const config = useRuntimeConfig();
+const apiBaseUrl = config.public.apiBaseUrl;
+
 const submitAdditionalInfo = async () => {
   console.log("Form submitted with input:", input.value);
   console.log("Additional Info 1:", additionalInfo1.value);
   console.log("Additional Info 2:", additionalInfo2.value);
+  console.log("apiBaseUrl", apiBaseUrl);
 
   try {
     const info = {
@@ -168,7 +173,7 @@ const submitAdditionalInfo = async () => {
       publicKey,
       lamports,
     };
-    const response = await $fetch("/api/some", {
+    const response = await $fetch(`${apiBaseUrl}/api/some`, {
       method: "POST",
       body: info,
     });

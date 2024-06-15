@@ -1,4 +1,4 @@
-import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
+import vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   build: {
@@ -13,6 +13,11 @@ export default defineNuxtConfig({
     },
     //...
   ],
+  runtimeConfig: {
+    public: {
+      apiBaseUrl: process.env.API_BASE_URL,
+    },
+  },
   devtools: { enabled: true },
   buildModules: ["@nuxt/typescript-build", "@nuxtjs/vuetify"],
   plugins: ["@/plugins/vuetify", "@/plugins/solana"],
@@ -26,8 +31,8 @@ export default defineNuxtConfig({
 
     vue: {
       template: {
-        transformAssetUrls
-      }
-    }
+        transformAssetUrls,
+      },
+    },
   },
 });
