@@ -26,7 +26,7 @@
               <v-row>
                 <v-col>
                   <div class="custom-textarea">
-                    <v-form @submit.prevent="submitForm">
+                    <v-form @submit.prevent="openModal">
                       <v-textarea
                         outlined
                         name="prompt-guessing"
@@ -53,7 +53,9 @@
                         </template>
                       </v-textarea>
                       <div class="d-flex justify-end">
-                        <v-btn type="submit">確定・送信</v-btn>
+                        <v-btn type="submit" :disabled="!promptString"
+                          >送信確認</v-btn
+                        >
                       </div>
                     </v-form>
                   </div>
@@ -69,8 +71,7 @@
                   lazy-src="https://picsum.photos/900/300/?random"
                   src="https://picsum.photos/900/300/?random"
                   width="100%"
-                >
-                </v-img>
+                ></v-img>
               </v-row>
             </v-container>
           </v-col>
@@ -85,6 +86,35 @@
         </v-row>
       </v-container>
     </v-main>
+
+    <v-dialog v-model="showDialog" persistent max-width="600px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">この内容で確定する</span>
+        </v-card-title>
+        <v-card-text>
+          <div>あなたが予想したプロンプト</div>
+          <v-textarea disabled v-model="promptString"> </v-textarea>
+          <v-form>
+            <div>送信するSOL</div>
+            <v-text-field
+              label="桁数を間違えないようにご注意ください"
+              v-model="additionalInfo1"
+              suffix="SOL"
+            ></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="green darken-1" text @click="submitAdditionalInfo"
+            >確定</v-btn
+          >
+          <v-btn color="green darken-1" text @click="closeModal"
+            >キャンセル</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 
@@ -98,6 +128,9 @@ const input = ref("");
 const promptString = ref("");
 const focused = ref(false);
 const textareaRef = ref(null);
+const showDialog = ref(false);
+const additionalInfo1 = ref("");
+const additionalInfo2 = ref("");
 
 const handleFocus = () => {
   focused.value = true;
@@ -114,8 +147,36 @@ const focusTextarea = () => {
   });
 };
 
-const submitForm = async () => {
+const openModal = () => {
+  showDialog.value = true;
+};
+
+const closeModal = () => {
+  showDialog.value = false;
+};
+
+const submitAdditionalInfo = async () => {
   console.log("Form submitted with input:", input.value);
+  console.log("Additional Info 1:", additionalInfo1.value);
+  console.log("Additional Info 2:", additionalInfo2.value);
+
+  try {
+    const info = {
+      promptString: promptString.value,
+      additionalInfo1: additionalInfo1.value,
+      additionalInfo2: additionalInfo2.value,
+      publicKey,
+      lamports,
+    };
+    const response = await $fetch("/api/some", {
+      method: "POST",
+      body: info,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+  } finally {
+    closeModal();
+  }
 };
 
 const requestAirdropWithRetry = async (
