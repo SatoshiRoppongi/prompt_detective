@@ -52,10 +52,17 @@
                           </transition>
                         </template>
                       </v-textarea>
-                      <v-btn type="submit">Submit</v-btn>
+                      <div class="d-flex justify-end">
+                        <v-btn type="submit">確定・送信</v-btn>
+                      </div>
                     </v-form>
                   </div>
                 </v-col>
+              </v-row>
+              <v-row justify="center">
+                <v-icon large class="arrow-down">{{
+                  mdiArrowDownThick
+                }}</v-icon>
               </v-row>
               <v-row>
                 <v-img
@@ -83,7 +90,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from "vue";
-import { mdiHelp } from "@mdi/js";
+import { mdiHelp, mdiArrowDownThick } from "@mdi/js";
 
 import connectWalletButton from "~/components/ConnectWalletButton";
 
@@ -157,6 +164,11 @@ const requestAirdropWithRetry = async (
   color: rgba(0, 0, 0, 0.6); /* 色を設定する */
   cursor: pointer; /* カーソルをポインターにする */
   transition: opacity 0.5s; /* アニメーションの追加 */
+}
+
+.arrow-down {
+  font-size: 5em;
+  margin-top: -60px;
 }
 
 .overlay v-icon {
