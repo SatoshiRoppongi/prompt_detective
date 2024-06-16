@@ -3,3 +3,4 @@ target
 .env
 !.env.local
 ./backend/functions/lib
+service_account.json
