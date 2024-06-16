@@ -67,11 +67,21 @@
                 }}</v-icon>
               </v-row>
               <v-row>
-                <v-img
-                  lazy-src="https://picsum.photos/900/300/?random"
-                  src="https://picsum.photos/900/300/?random"
-                  width="100%"
-                ></v-img>
+                <v-col>
+                  <v-img
+                    v-if="!isLoading && !errorMessage"
+                    :src="imageUrl"
+                    width="100%"
+                  ></v-img>
+                  <v-alert v-if="errorMessage" type="error">
+                    {{ errorMessage }}
+                  </v-alert>
+                  <v-progress-circular
+                    v-if="isLoading"
+                    indeterminate
+                    color="primary"
+                  ></v-progress-circular>
+                </v-col>
               </v-row>
             </v-container>
           </v-col>
@@ -118,6 +128,7 @@
   </v-app>
 </template>
 
+
 <script setup lang="ts">
 import { ref, nextTick } from "vue";
 import { useRuntimeConfig } from "#app";
@@ -131,7 +142,10 @@ const focused = ref(false);
 const textareaRef = ref(null);
 const showDialog = ref(false);
 const additionalInfo1 = ref("");
-const additionalInfo2 = ref("");
+const imageUrl = ref("");  // 画像URLを保持するref
+const isLoading = ref(true); // ローディング状態を保持するref
+const errorMessage = ref(""); // エラーメッセージを保持するref
+
 
 const handleFocus = () => {
   focused.value = true;
@@ -158,6 +172,39 @@ const closeModal = () => {
 
 const config = useRuntimeConfig();
 const apiBaseUrl = config.public.apiBaseUrl;
+const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`
+
+
+// 画像URLを取得する関数
+
+
+const fetchImageUrl = async () => {
+  try {
+    const { data, error } = await useFetch(`${apiUrl}/image`);
+    if (error.value) {
+      throw new Error(error.value.message);
+    }
+
+    // デバッグ用にレスポンスデータをログに出力
+    console.log("APIレスポンスデータ:", data.value);
+
+    if (data.value && data.value.url) {
+      imageUrl.value = data.value.url; // 取得した画像URLをセット
+    } else {
+      throw new Error("レスポンスにurlプロパティがありません");
+    }
+  } catch (error) {
+    console.error("Error fetching image URL:", error);
+    errorMessage.value = "画像を取得できませんでした。";
+  } finally {
+    isLoading.value = false; // ローディング状態を解除
+  }
+};
+
+
+
+// コンポーネントがマウントされたときに画像URLを取得
+onMounted(fetchImageUrl);
 
 const submitAdditionalInfo = async () => {
   console.log("Form submitted with input:", input.value);
@@ -173,7 +220,7 @@ const submitAdditionalInfo = async () => {
       publicKey,
       lamports,
     };
-    const response = await $fetch(`${apiBaseUrl}/api/some`, {
+    const response = await $fetch(`${apiBaseUrl}/some`, {
       method: "POST",
       body: info,
     });

@@ -8,6 +8,7 @@
  */
 
 // import {onRequest} from "firebase-functions/v2/https";
+/*
 import * as logger from "firebase-functions/logger";
 
 import * as functions from "firebase-functions";
@@ -168,6 +169,7 @@ functions.pubsub.schedule("every day 19:00").
       console.error("Error setting scores:", error);
     }
   });
+  */
 
 // TODO: 下記機能を満たす関数を追加する
 // ・ユーザから問題に対する回答とpubkeyを取得し、firestoreに格納する(setScoresとは別endpoint)
