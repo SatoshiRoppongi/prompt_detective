@@ -128,9 +128,8 @@
   </v-app>
 </template>
 
-
 <script setup lang="ts">
-import { ref, nextTick } from "vue";
+import { ref, nextTick, onMounted } from "vue";
 import { useRuntimeConfig } from "#app";
 import { mdiHelp, mdiArrowDownThick } from "@mdi/js";
 
@@ -145,7 +144,6 @@ const additionalInfo1 = ref("");
 const imageUrl = ref("");  // 画像URLを保持するref
 const isLoading = ref(true); // ローディング状態を保持するref
 const errorMessage = ref(""); // エラーメッセージを保持するref
-
 
 const handleFocus = () => {
   focused.value = true;
@@ -172,24 +170,14 @@ const closeModal = () => {
 
 const config = useRuntimeConfig();
 const apiBaseUrl = config.public.apiBaseUrl;
-const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`
-
-
-// 画像URLを取得する関数
-
+const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`;
 
 const fetchImageUrl = async () => {
   try {
-    const { data, error } = await useFetch(`${apiUrl}/image`);
-    if (error.value) {
-      throw new Error(error.value.message);
-    }
-
-    // デバッグ用にレスポンスデータをログに出力
-    console.log("APIレスポンスデータ:", data.value);
-
-    if (data.value && data.value.url) {
-      imageUrl.value = data.value.url; // 取得した画像URLをセット
+    const response = await fetch(`${apiUrl}/image`);
+    const data = await response.json();
+    if (data && data.url) {
+      imageUrl.value = data.url; // 取得した画像URLをセット
     } else {
       throw new Error("レスポンスにurlプロパティがありません");
     }
@@ -201,58 +189,29 @@ const fetchImageUrl = async () => {
   }
 };
 
-
-
 // コンポーネントがマウントされたときに画像URLを取得
 onMounted(fetchImageUrl);
 
 const submitAdditionalInfo = async () => {
   console.log("Form submitted with input:", input.value);
   console.log("Additional Info 1:", additionalInfo1.value);
-  console.log("Additional Info 2:", additionalInfo2.value);
-  console.log("apiBaseUrl", apiBaseUrl);
 
   try {
     const info = {
       promptString: promptString.value,
       additionalInfo1: additionalInfo1.value,
-      additionalInfo2: additionalInfo2.value,
-      publicKey,
-      lamports,
     };
-    const response = await $fetch(`${apiBaseUrl}/some`, {
+    const response = await fetch(`${apiBaseUrl}/some`, {
       method: "POST",
-      body: info,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(info),
     });
   } catch (error) {
     console.error("Error:", error);
   } finally {
     closeModal();
-  }
-};
-
-const requestAirdropWithRetry = async (
-  publicKey,
-  lamports,
-  retries = 5,
-  delay = 500
-) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`Attempt ${i + 1}: Requesting airdrop...`);
-      // Mocked airdrop request logic
-      return;
-    } catch (e) {
-      if (i < retries - 1) {
-        console.log(
-          `Server responded with 429. Retrying after ${delay}ms delay...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff
-      } else {
-        throw e;
-      }
-    }
   }
 };
 </script>
