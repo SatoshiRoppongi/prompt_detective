@@ -20,10 +20,6 @@ const props = defineProps({
 
 const elementId = `identicon-${Math.random().toString(36).substr(2, 9)}`
 
-console.log('for debug')
-console.log(elementId)
-console.log(props.value)
-
 onMounted(() => {
     jdenticon.update(`#${elementId}`, props.value)
 })
