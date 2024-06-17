@@ -1,9 +1,9 @@
 import { ref } from "vue";
 import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 
-export function useWallet() {
-  const walletAddress = ref<string | null>(null);
-  const balance = ref<number | null>(null);
+export const useWallet = () => {
+  const walletAddress = useState('walletAddress', () => null)
+  const balance = useState('balance', () => null)
 
   const connectWallet = async () => {
     if (window.solana && window.solana.isPhantom) {
@@ -39,8 +39,6 @@ export function useWallet() {
       const publicKeyObj = new PublicKey(publicKey);
       const balanceInfo = await connection.getBalance(publicKeyObj);
       balance.value = balanceInfo / 1000000000; // lamports to sol
-      console.log("aaa");
-      console.log(balance.value);
     } catch (err) {
       console.error("error fetching balance:", err);
     }

@@ -38,6 +38,7 @@
                         ref="textareaRef"
                         @focus="handleFocus"
                         @blur="handleBlur"
+                        :disabled="!walletAddress"
                       >
                         <template v-slot:append>
                           <transition name="fade">
@@ -47,13 +48,14 @@
                               @click="focusTextarea"
                             >
                               <v-icon large>{{ mdiHelp }}</v-icon>
-                              <div>ここをクリックしてください</div>
+                              <div v-if="walletAddress">ここをクリックしてください</div>
+                              <div v-else="walletAddress">予想するにはウォレットに接続してください</div>
                             </div>
                           </transition>
                         </template>
                       </v-textarea>
                       <div class="d-flex justify-end">
-                        <v-btn type="submit" :disabled="!promptString"
+                        <v-btn v-if="walletAddress" type="submit" :disabled="!promptString"
                           >送信確認</v-btn
                         >
                       </div>
@@ -129,11 +131,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from "vue";
+import { ref, nextTick, onMounted, toRefs} from "vue";
 import { useRuntimeConfig } from "#app";
 import { mdiHelp, mdiArrowDownThick } from "@mdi/js";
 
 import connectWalletButton from "~/components/ConnectWalletButton";
+import { useWallet } from "~/composables/useWallets";
+
+const { walletAddress } = useWallet();
+console.log('walletAddress:', walletAddress.value)
 
 const input = ref("");
 const promptString = ref("");
@@ -144,6 +150,7 @@ const additionalInfo1 = ref("");
 const imageUrl = ref("");  // 画像URLを保持するref
 const isLoading = ref(true); // ローディング状態を保持するref
 const errorMessage = ref(""); // エラーメッセージを保持するref
+
 
 const handleFocus = () => {
   focused.value = true;
