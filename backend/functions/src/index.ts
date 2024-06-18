@@ -21,6 +21,7 @@ import * as imageController from "./controllers/imageController";
 // User API Endpoints
 app.post("/users", userController.createUser);
 app.get("/users/:id", userController.getUser);
+app.get("/users", userController.getUserByWalletAddress);
 app.put("/users/:id", userController.updateUser);
 app.delete("/users/:id", userController.deleteUser);
 
