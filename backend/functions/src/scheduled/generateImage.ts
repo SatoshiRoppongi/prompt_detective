@@ -8,15 +8,13 @@ import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 import {v4 as uuidv4} from "uuid";
 
-import * as admin from "firebase-admin";
-
 import {FieldValue} from "firebase-admin/firestore";
 
-const db = admin.firestore();
 
 dotenv.config();
 
 import {uploadImageFromUrl} from "../services/storageService";
+import {Problem, createProblem} from "../services/problemService";
 
 import OpenAI from "openai";
 
@@ -86,13 +84,15 @@ export const scheduledGenerateImage =
         await uploadImageFromUrl(imageUrl, randomName);
         console.log("Image generated and uploaded successfully");
 
-        // Firestoreにメタデータを保存
-        await db.collection("problems").doc(randomName).set({
+        const problem: Problem = {
           id: randomName,
           imageName: `${randomName}.jpg`,
           secretPrompt: secretPrompt,
           createdAt: FieldValue.serverTimestamp(),
-        });
+        };
+
+        // Firestoreにメタデータを保存
+        await createProblem(problem);
       } catch (error) {
         console.error("Error generating image:", error);
       }
