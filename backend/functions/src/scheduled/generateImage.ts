@@ -88,6 +88,8 @@ export const scheduledGenerateImage =
           id: randomName,
           imageName: `${randomName}.jpg`,
           secretPrompt: secretPrompt,
+          totalParticipants: 0,
+          averageScore: 0,
           createdAt: FieldValue.serverTimestamp(),
         };
 

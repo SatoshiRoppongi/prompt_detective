@@ -1,6 +1,5 @@
 /* eslint-disable max-len */
 import * as admin from "firebase-admin";
-// import {DocumentData} from "@google-cloud/firestore";
 
 const db = admin.firestore();
 const usersCollection = db.collection("users");

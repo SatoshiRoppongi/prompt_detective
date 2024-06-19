@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 // index.ts
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
@@ -13,8 +14,6 @@ import * as ServiceAccount from "./service_account.json";
 admin.initializeApp({
   credential: admin.credential.cert(ServiceAccount as admin.ServiceAccount),
 });
-// const db = admin.firestore();
-// const storage = admin.storage().bucket();
 
 const app = express();
 app.use(cors({origin: true}));
@@ -22,6 +21,7 @@ app.use(cors({origin: true}));
 import * as userController from "./controllers/userController";
 import * as imageController from "./controllers/imageController";
 import * as quizController from "./controllers/quizController";
+import * as participationController from "./controllers/participationController";
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -33,8 +33,11 @@ app.delete("/users/:id", userController.deleteUser);
 // Image API Endpoints
 app.get("/image", imageController.getImage);
 
-// Quiz Info
+// Quiz API Endpoints
 app.get("/latestQuiz", quizController.getLatestQuiz);
+
+// Participation API Endpoints
+app.post("/participation", participationController.createParticipant);
 
 // TODO: cloud storageから画像を格納、取得するエンドポイントを追加する
 
