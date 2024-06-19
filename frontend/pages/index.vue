@@ -118,10 +118,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="green darken-1" text @click="submitAdditionalInfo"
+          <v-btn color="green darken-1" @click="submitAdditionalInfo"
             >確定</v-btn
           >
-          <v-btn color="green darken-1" text @click="closeModal"
+          <v-btn color="green darken-1" @click="closeModal"
             >キャンセル</v-btn
           >
         </v-card-actions>
@@ -135,7 +135,6 @@ import { ref, nextTick, onMounted, toRefs} from "vue";
 import { useRuntimeConfig } from "#app";
 import { mdiHelp, mdiArrowDownThick } from "@mdi/js";
 
-import connectWalletButton from "~/components/ConnectWalletButton";
 import { useWallet } from "~/composables/useWallets";
 
 const { walletAddress } = useWallet();
@@ -144,7 +143,7 @@ console.log('walletAddress:', walletAddress.value)
 const input = ref("");
 const promptString = ref("");
 const focused = ref(false);
-const textareaRef = ref(null);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const showDialog = ref(false);
 const additionalInfo1 = ref("");
 const imageUrl = ref("");  // 画像URLを保持するref
@@ -163,7 +162,7 @@ const handleBlur = () => {
 const focusTextarea = () => {
   focused.value = true;
   nextTick(() => {
-    textareaRef.value.focus();
+      textareaRef.value!.focus();
   });
 };
 
