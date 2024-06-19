@@ -6,6 +6,14 @@
 
 import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
+import {v4 as uuidv4} from "uuid";
+
+import * as admin from "firebase-admin";
+
+import {FieldValue} from "firebase-admin/firestore";
+
+const db = admin.firestore();
+
 dotenv.config();
 
 import {uploadImageFromUrl} from "../services/storageService";
@@ -70,9 +78,21 @@ export const scheduledGenerateImage =
         return null;
       }
 
+      // 画像にランダムな名前をつける
+      const randomName = uuidv4();
+
+
       try {
-        await uploadImageFromUrl(imageUrl);
+        await uploadImageFromUrl(imageUrl, randomName);
         console.log("Image generated and uploaded successfully");
+
+        // Firestoreにメタデータを保存
+        await db.collection("problems").doc(randomName).set({
+          id: randomName,
+          imageName: `${randomName}.jpg`,
+          secretPrompt: secretPrompt,
+          createdAt: FieldValue.serverTimestamp(),
+        });
       } catch (error) {
         console.error("Error generating image:", error);
       }

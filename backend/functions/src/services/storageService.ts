@@ -2,16 +2,6 @@
 import axios from "axios";
 import * as admin from "firebase-admin";
 // https://stackoverflow.com/questions/72928353/why-is-admin-firestore-fieldvalue-undefined-when-running-code-in-firebase-emulat
-import {FieldValue} from "firebase-admin/firestore";
-import {v4 as uuidv4} from "uuid";
-
-const db = admin.firestore();
-
-/*
-admin.initializeApp({
-  credential: admin.credential.cert(ServiceAccount as admin.ServiceAccount),
-});
-*/
 
 const bucket = admin.storage().bucket("gs://prompt-detective-backend.appspot.com");
 
@@ -56,9 +46,9 @@ export const getLatestImage = async () => {
   }
 };
 
-export const uploadImageFromUrl = async (url: string) => {
+// open aiから払い出されたurlから直接画像をstorageに格納する
+export const uploadImageFromUrl = async (url: string, randomName: string) => {
   try {
-    const randomName = uuidv4();
     const destination = `images/${randomName}.jpg`;
 
     // URLから画像データを取得
@@ -82,14 +72,6 @@ export const uploadImageFromUrl = async (url: string) => {
       stream.on("finish", async () => {
         console.log("Image uploaded successfully as", randomName);
 
-        // Firestoreにメタデータを保存
-        // TODO: imagesではなく、問題を管理するproblemに紐づけるかも
-        // なので以下は一旦仮
-        await db.collection("images").doc(randomName).set({
-          id: randomName,
-          name: `${randomName}.jpg`,
-          createdAt: FieldValue.serverTimestamp(),
-        });
         resolve();
       });
       stream.on("error", (error) => {
