@@ -6,7 +6,7 @@ import * as admin from "firebase-admin";
 const bucket = admin.storage().bucket("gs://prompt-detective-backend.appspot.com");
 
 export const getImageByName = async (name: string) => {
-  const filePath = `${name}.jpeg`;
+  const filePath = `images/${name}.jpg`;
   const file = bucket.file(filePath);
 
   try {
@@ -20,6 +20,7 @@ export const getImageByName = async (name: string) => {
   }
 };
 
+/*
 export const getLatestImage = async () => {
   try {
     const [files] = await bucket.getFiles({prefix: "", autoPaginate: false});
@@ -38,6 +39,7 @@ export const getLatestImage = async () => {
       action: "read",
       expires: "03-17-2025",
     });
+    console.log("url:", url);
     return url;
   } catch (error) {
     console.log("f");
@@ -45,6 +47,7 @@ export const getLatestImage = async () => {
     throw new Error("Failed to retrieve the latest file");
   }
 };
+*/
 
 // open aiから払い出されたurlから直接画像をstorageに格納する
 export const uploadImageFromUrl = async (url: string, randomName: string) => {

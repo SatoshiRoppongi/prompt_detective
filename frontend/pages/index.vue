@@ -111,14 +111,14 @@
             <div>送信するSOL</div>
             <v-text-field
               label="桁数を間違えないようにご注意ください"
-              v-model="additionalInfo1"
+              v-model="bet"
               suffix="SOL"
             ></v-text-field>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="green darken-1" @click="submitAdditionalInfo"
+          <v-btn color="green darken-1" @click="submitInfo"
             >確定</v-btn
           >
           <v-btn color="green darken-1" @click="closeModal"
@@ -145,7 +145,7 @@ const promptString = ref("");
 const focused = ref(false);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const showDialog = ref(false);
-const additionalInfo1 = ref("");
+const bet = ref("");
 const imageUrl = ref("");  // 画像URLを保持するref
 const isLoading = ref(true); // ローディング状態を保持するref
 const errorMessage = ref(""); // エラーメッセージを保持するref
@@ -178,12 +178,22 @@ const config = useRuntimeConfig();
 const apiBaseUrl = config.public.apiBaseUrl;
 const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`;
 
-const fetchImageUrl = async () => {
+const fetchData = async () => {
   try {
-    const response = await fetch(`${apiUrl}/image`);
-    const data = await response.json();
-    if (data && data.url) {
-      imageUrl.value = data.url; // 取得した画像URLをセット
+    // problemの情報を取得する
+    const problemInfoPromise = await fetch(`${apiUrl}/latestProblem`);
+    if (!problemInfoPromise) {
+      throw new Error("問題情報が取得できませんでした");
+    }
+
+    const problemInfo = await problemInfoPromise.json()
+    console.log('problemInfo:', problemInfo)
+
+    const imageName= problemInfo.id
+    const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
+    const imageData = await imageInfoPromise.json();
+    if (imageData && imageData.url) {
+      imageUrl.value = imageData.url; // 取得した画像URLをセット
     } else {
       throw new Error("レスポンスにurlプロパティがありません");
     }
@@ -196,18 +206,19 @@ const fetchImageUrl = async () => {
 };
 
 // コンポーネントがマウントされたときに画像URLを取得
-onMounted(fetchImageUrl);
+onMounted(fetchData);
 
-const submitAdditionalInfo = async () => {
+const submitInfo = async () => {
   console.log("Form submitted with input:", input.value);
-  console.log("Additional Info 1:", additionalInfo1.value);
+  console.log("Betting:", bet.value);
 
   try {
     const info = {
+      walletAddress: walletAddress,
       promptString: promptString.value,
-      additionalInfo1: additionalInfo1.value,
+      bet: bet.value,
     };
-    const response = await fetch(`${apiBaseUrl}/some`, {
+    const response = await fetch(`${apiUrl}/some`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
