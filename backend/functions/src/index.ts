@@ -21,7 +21,7 @@ app.use(cors({origin: true}));
 
 import * as userController from "./controllers/userController";
 import * as imageController from "./controllers/imageController";
-import * as problemController from "./controllers/problemController";
+import * as quizController from "./controllers/quizController";
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -33,8 +33,8 @@ app.delete("/users/:id", userController.deleteUser);
 // Image API Endpoints
 app.get("/image", imageController.getImage);
 
-// Problem Info
-app.get("/latestProblem", problemController.getLatestProblem);
+// Quiz Info
+app.get("/latestQuiz", quizController.getLatestQuiz);
 
 // TODO: cloud storageから画像を格納、取得するエンドポイントを追加する
 
