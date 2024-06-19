@@ -3,11 +3,11 @@ import {Request, Response} from "express";
 import * as storageService from "../services/storageService";
 
 export const getImage = async (req: Request, res: Response) => {
-  const {date} = req.query;
+  const {name} = req.query;
 
   try {
-    const imageUrl = date ?
-      await storageService.getImageByDate(date as string) :
+    const imageUrl = name ?
+      await storageService.getImageByName(name as string) :
       await storageService.getLatestImage();
 
     res.status(200).send({url: imageUrl});

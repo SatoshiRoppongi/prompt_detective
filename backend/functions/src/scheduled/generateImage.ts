@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 // TODO: Open AIのAPIを使ってsecret promptを生成する
 //  「50文字程度で意味のない文章を1つ作成してください」
 // secret promptを利用して画像を生成する(dall-e3)
@@ -5,8 +6,9 @@
 
 import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
-console.log("test:", dotenv.config);
 dotenv.config();
+
+import {uploadImageFromUrl} from "../services/storageService";
 
 import OpenAI from "openai";
 
@@ -30,13 +32,49 @@ const geneartePrompt = async () => {
   return chatCompletion;
 };
 
+const generateImage = async (promptString: string) => {
+  const prompt = promptString;
+
+  const imageGeneration = await openai.images.generate({
+    model: "dall-e-3",
+    prompt: prompt,
+    n: 1,
+    size: "1024x1024",
+  });
+
+  return imageGeneration;
+};
+
 // Firebase Function
 export const scheduledGenerateImage =
-    functions.pubsub.schedule("every day 19:00").
-      timeZone("Asia/Tokyo").
-      onRun(async (context) => {
-        // 画像生成のお題となるプロンプトを生成する
-        const geneartedPrompt = await geneartePrompt();
-        console.log("generatedPrompt:", geneartedPrompt.choices[0].message);
+  functions.pubsub.schedule("every day 19:00").
+    timeZone("Asia/Tokyo").
+    onRun(async (context) => {
+      // 画像生成のお題となるプロンプトを生成する
+      const geneartedPrompt = await geneartePrompt();
+      console.log("generatedPrompt:", geneartedPrompt.choices[0].message.content);
+
+      const secretPrompt = geneartedPrompt.choices[0].message.content;
+
+      if (!secretPrompt) {
+        // is it proper handling?
         return null;
-      });
+      }
+
+      const generatedImage = await generateImage(secretPrompt);
+
+      const imageUrl = generatedImage.data[0].url;
+
+      if (!imageUrl) {
+        // is it proper handling?
+        return null;
+      }
+
+      try {
+        await uploadImageFromUrl(imageUrl);
+        console.log("Image generated and uploaded successfully");
+      } catch (error) {
+        console.error("Error generating image:", error);
+      }
+      return null;
+    });
