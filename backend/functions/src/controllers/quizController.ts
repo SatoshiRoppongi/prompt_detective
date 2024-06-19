@@ -1,19 +1,19 @@
 import {Request, Response} from "express";
-import * as problemService from "../services/problemService";
+import * as quizService from "../services/quizService";
 
-export const getLatestProblem = async (req: Request, res: Response) => {
+export const getLatestQuiz = async (req: Request, res: Response) => {
   // 最新の問題の情報を取得する
-  console.log("getLatestProblem");
+  console.log("getLatestQuiz");
   try {
-    const problem = await problemService.getLatestProblem();
-    console.log("problem from controller:", problem);
+    const quiz = await quizService.getLatestQuiz();
+    console.log("quiz from controller:", quiz);
     // 以下は秘密の情報なので返却情報から除外する
     const excludeKeys = ["secretPrompt"];
-    if (!problem) {
+    if (!quiz) {
       throw new Error("問題情報の取得ができませんでした");
     }
     const retObj = Object.fromEntries(
-      Object.entries(problem).filter(([key]) => !excludeKeys.includes(key))
+      Object.entries(quiz).filter(([key]) => !excludeKeys.includes(key))
     );
     res.status(200).json(retObj);
   } catch (error: any) {

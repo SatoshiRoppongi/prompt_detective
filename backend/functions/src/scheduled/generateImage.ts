@@ -14,7 +14,7 @@ import {FieldValue} from "firebase-admin/firestore";
 dotenv.config();
 
 import {uploadImageFromUrl} from "../services/storageService";
-import {Problem, createProblem} from "../services/problemService";
+import {Quiz, createQuiz} from "../services/quizService";
 
 import OpenAI from "openai";
 
@@ -84,7 +84,7 @@ export const scheduledGenerateImage =
         await uploadImageFromUrl(imageUrl, randomName);
         console.log("Image generated and uploaded successfully");
 
-        const problem: Problem = {
+        const quiz: Quiz = {
           id: randomName,
           imageName: `${randomName}.jpg`,
           secretPrompt: secretPrompt,
@@ -92,7 +92,7 @@ export const scheduledGenerateImage =
         };
 
         // Firestoreにメタデータを保存
-        await createProblem(problem);
+        await createQuiz(quiz);
       } catch (error) {
         console.error("Error generating image:", error);
       }

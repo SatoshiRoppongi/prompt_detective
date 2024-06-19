@@ -180,16 +180,16 @@ const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`;
 
 const fetchData = async () => {
   try {
-    // problemの情報を取得する
-    const problemInfoPromise = await fetch(`${apiUrl}/latestProblem`);
-    if (!problemInfoPromise) {
+    // quizの情報を取得する
+    const quizInfoPromise = await fetch(`${apiUrl}/latestQuiz`);
+    if (!quizInfoPromise) {
       throw new Error("問題情報が取得できませんでした");
     }
 
-    const problemInfo = await problemInfoPromise.json()
-    console.log('problemInfo:', problemInfo)
+    const quizInfo = await quizInfoPromise.json()
+    console.log('quizInfo:', quizInfo)
 
-    const imageName= problemInfo.id
+    const imageName= quizInfo.id
     const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
     const imageData = await imageInfoPromise.json();
     if (imageData && imageData.url) {

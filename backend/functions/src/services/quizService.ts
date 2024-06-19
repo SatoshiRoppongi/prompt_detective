@@ -3,9 +3,9 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 
 const db = admin.firestore();
-const problemsCollection = db.collection("problems");
+const quizzesCollection = db.collection("quizzes");
 
-export interface Problem {
+export interface Quiz {
     id?: string;
     imageName: string | null;
     secretPrompt: string;
@@ -13,32 +13,32 @@ export interface Problem {
     // todo: 必要なら他の問題情報を定義
 }
 
-export const createProblem = async (problem: Problem): Promise<void> => {
-  // 一旦problem.id = documentのキーとする
-  const key = problem.id;
+export const createQuiz = async (quiz: Quiz): Promise<void> => {
+  // 一旦quiz.id = documentのキーとする
+  const key = quiz.id;
   if (!key) {
     return;
   }
-  await problemsCollection.doc(key).set(
-    problem
+  await quizzesCollection.doc(key).set(
+    quiz
   );
   return;
 };
 
-export const getLatestProblem = async (): Promise<Problem | null>=> {
+export const getLatestQuiz = async (): Promise<Quiz | null>=> {
   try {
-    const querySnapshot = await problemsCollection
+    const querySnapshot = await quizzesCollection
       .orderBy("createdAt", "desc")
       .limit(1)
       .get();
     if (querySnapshot.empty) {
-      console.log("No matching problems.");
+      console.log("No matching quizzes.");
       return null;
     }
 
     const doc = querySnapshot.docs[0];
     console.log("doc:", doc);
-    return {id: doc.id, ...doc.data()} as Problem;
+    return {id: doc.id, ...doc.data()} as Quiz;
   } catch (error) {
     console.error("Error getting latest document:", error);
     return null;
