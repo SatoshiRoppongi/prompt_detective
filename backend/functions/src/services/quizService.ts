@@ -9,7 +9,10 @@ export interface Quiz {
     id?: string;
     imageName: string | null;
     secretPrompt: string;
+    totalParticipants: number;
+    averageScore: number;
     createdAt: FieldValue;
+
     // todo: 必要なら他の問題情報を定義
 }
 

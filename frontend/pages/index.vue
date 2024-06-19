@@ -146,6 +146,7 @@ const focused = ref(false);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const showDialog = ref(false);
 const bet = ref("");
+const quizId = ref("");
 const imageUrl = ref("");  // 画像URLを保持するref
 const isLoading = ref(true); // ローディング状態を保持するref
 const errorMessage = ref(""); // エラーメッセージを保持するref
@@ -190,6 +191,7 @@ const fetchData = async () => {
     console.log('quizInfo:', quizInfo)
 
     const imageName= quizInfo.id
+    quizId.value = quizInfo.id
     const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
     const imageData = await imageInfoPromise.json();
     if (imageData && imageData.url) {
@@ -214,11 +216,12 @@ const submitInfo = async () => {
 
   try {
     const info = {
+      quizId,
       walletAddress: walletAddress,
-      promptString: promptString.value,
+      guessPrompt: promptString.value,
       bet: bet.value,
     };
-    const response = await fetch(`${apiUrl}/some`, {
+    const response = await fetch(`${apiUrl}/participation`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
