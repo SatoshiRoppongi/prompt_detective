@@ -21,10 +21,12 @@ export const getLatestQuiz = async (req: Request, res: Response) => {
     );
     // Participantのscoreを除外する.
     // TODO:過去分は見れるようにする
-    retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
-      const {score, ...rest} = participant;
-      return rest;
-    });
+    if (retObj.participants) {
+      retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
+        const {score, ...rest} = participant;
+        return rest;
+      });
+    }
     res.status(200).json(retObj);
   } catch (error: any) {
     res.status(500).send({error: error.message});
