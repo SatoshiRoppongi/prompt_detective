@@ -216,8 +216,8 @@ const submitInfo = async () => {
 
   try {
     const info = {
-      quizId,
-      walletAddress: walletAddress,
+      quizId: quizId.value,
+      walletAddress: walletAddress.value,
       guessPrompt: promptString.value,
       bet: bet.value,
     };

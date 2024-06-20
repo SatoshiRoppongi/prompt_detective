@@ -24,10 +24,10 @@ export const createParticipant = async (
   guessPrompt: string,
   bet: number
 ): Promise<void> => {
-  const quizDocRef = quizzesCollection.doc(quizId);
-  const participantsColRef = quizDocRef.collection("participants");
-
   try {
+    const quizDocRef = quizzesCollection.doc(quizId);
+    const participantsColRef = quizDocRef.collection("participants");
+
     await db.runTransaction(async (transaction) => {
       const quizDoc = await transaction.get(quizDocRef);
 

@@ -3,9 +3,9 @@ import * as participantionService from "../services/participationService";
 export const createParticipant = async (req: Request, res: Response) => {
   try {
     const participant = await participantionService.createParticipant(
+      req.body.quizId,
       req.body.walletAddress,
       req.body.guessPrompt,
-      req.body.score,
       req.body.bet
     );
     res.status(201).json(participant);
