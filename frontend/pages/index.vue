@@ -111,7 +111,7 @@
             <div>送信するSOL</div>
             <v-text-field
               label="桁数を間違えないようにご注意ください"
-              v-model="bet"
+              v-model.number="bet"
               suffix="SOL"
             ></v-text-field>
           </v-form>
@@ -145,7 +145,7 @@ const promptString = ref("");
 const focused = ref(false);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const showDialog = ref(false);
-const bet = ref("");
+const bet = ref(0);
 const quizId = ref("");
 const imageUrl = ref("");  // 画像URLを保持するref
 const isLoading = ref(true); // ローディング状態を保持するref
@@ -219,7 +219,7 @@ const submitInfo = async () => {
       quizId: quizId.value,
       walletAddress: walletAddress.value,
       guessPrompt: promptString.value,
-      bet: bet.value,
+      bet: Number(bet.value),
     };
     const response = await fetch(`${apiUrl}/participation`, {
       method: "POST",

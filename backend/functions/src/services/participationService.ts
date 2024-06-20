@@ -40,6 +40,7 @@ export const createParticipant = async (
       const quizData = quizDoc.data() as Quiz;
 
       const participantScore = await calculateScore(guessPrompt, quizData.secretPrompt);
+      const newPot = quizData.pot + bet;
 
       const newTotalParticipants = quizData.totalParticipants + 1;
       const newAverageScore = ((quizData.averageScore * quizData.totalParticipants) + participantScore) / newTotalParticipants;
@@ -58,6 +59,7 @@ export const createParticipant = async (
       transaction.update(quizDocRef, {
         totalParticipants: newTotalParticipants,
         averageScore: newAverageScore,
+        pot: newPot,
       });
 
       console.log(`Participant added with ID: ${newParticipantRef.id}`);
