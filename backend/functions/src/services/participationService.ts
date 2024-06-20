@@ -2,6 +2,7 @@
 /* eslint-disable max-len */
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
+import {distance} from "fastest-levenshtein";
 
 const db = admin.firestore();
 const quizzesCollection = db.collection("quizzes");
@@ -35,9 +36,11 @@ export const createParticipant = async (
         throw new Error("Quiz document does not exist!");
       }
 
-      const participantScore = await calculateScore(guessPrompt);
 
       const quizData = quizDoc.data() as Quiz;
+
+      const participantScore = await calculateScore(guessPrompt, quizData.secretPrompt);
+
       const newTotalParticipants = quizData.totalParticipants + 1;
       const newAverageScore = ((quizData.averageScore * quizData.totalParticipants) + participantScore) / newTotalParticipants;
 
@@ -66,8 +69,21 @@ export const createParticipant = async (
   }
 };
 
-const calculateScore = async (guessPrompt: string): Promise<number> => {
-  // TODO; guessPromptとsecretPromptの文字列類似度を測ってスコアを計算する
-  const score = 50;
+const calculateScore = async (guessPrompt: string, secretPrompt: string): Promise<number> => {
+  // (ユーザ)推測文字列と、正解(秘密)文字列のレーベンシュタイン距離を計算
+  // TODO: 文字列類似度を測るアルゴリズムはこれで問題ないか。きたるタイミングで要検討
+  // また、免責事項として、レーベンシュタイン距離を用いている旨を、サイトに記載する
+
+  const levenshteinDistance = distance(guessPrompt, secretPrompt);
+
+  // 距離を、一致率（類似度）に変換するために正規化を行う
+  const maxLength = Math.max(guessPrompt.length, secretPrompt.length);
+
+  if (maxLength === 0) {
+    return 100; // 両方の文字列がからの場合は完全一致とする
+  }
+
+  const score = (1 - levenshteinDistance / maxLength) * 100;
+
   return score;
 };
