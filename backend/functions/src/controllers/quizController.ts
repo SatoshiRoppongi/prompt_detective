@@ -23,10 +23,11 @@ export const getLatestQuiz = async (req: Request, res: Response) => {
     // TODO:過去分は見れるようにする
     if (retObj.participants) {
       retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
-        const {score, ...rest} = participant;
+        const {score, guessPrompt, ...rest} = participant;
         return rest;
       });
     }
+    console.log("retObj", retObj);
     res.status(200).json(retObj);
   } catch (error: any) {
     res.status(500).send({error: error.message});
