@@ -92,6 +92,7 @@ export const scheduledGenerateImage =
           averageScore: 0,
           pot: 0,
           createdAt: FieldValue.serverTimestamp(),
+          participants: [],
         };
 
         // Firestoreにメタデータを保存
