@@ -90,6 +90,7 @@ export const scheduledGenerateImage =
           secretPrompt: secretPrompt,
           totalParticipants: 0,
           averageScore: 0,
+          pot: 0,
           createdAt: FieldValue.serverTimestamp(),
         };
 

@@ -6,12 +6,13 @@ const db = admin.firestore();
 const quizzesCollection = db.collection("quizzes");
 
 export interface Quiz {
-    id?: string;
-    imageName: string | null;
-    secretPrompt: string;
-    totalParticipants: number;
-    averageScore: number;
-    createdAt: FieldValue;
+  id?: string;
+  imageName: string | null;
+  secretPrompt: string;
+  totalParticipants: number;
+  averageScore: number;
+  pot: number; // poolの方がいい？
+  createdAt: FieldValue;
 
     // todo: 必要なら他の問題情報を定義
 }
