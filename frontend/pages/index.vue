@@ -115,7 +115,12 @@
               <v-divider></v-divider>
               <v-card-text>
                 <v-row v-for="(participant, index) in summaryInfo.participants" v-bind:key="participant.walletAddress" class="mb-2">
-                  address: {{ truncateAddress(participant.walletAddress) }} bet: {{ participant.bet }}sol
+                  <strong class="mr-2">
+                    {{ index + 1 }}.
+                  </strong>
+                  <strong>
+                  {{ truncateAddress(participant.walletAddress) }}
+                  </strong>
                   <!--
                   TODO: 上記見やすいようにする。
                   vuetifyにゲージを表示するコンポーネントある？
@@ -124,6 +129,16 @@
                   ・上位数名のみ表示する？
                   ・ユーザの居場所を表示する
                   -->
+                  <v-progress-linear
+                  :model-value="(participant.bet / summaryInfo.pot) * 100"
+                  color="amber"
+                  height="20"
+                  >
+                  <template v-slot:default="{value}">
+                    <div class="mr-2"> {{ participant.bet }} SOL </div>
+                    <div> ({{ Math.ceil(value) }} %) </div>
+                  </template>
+                  </v-progress-linear>
 
                 </v-row>
               </v-card-text>
