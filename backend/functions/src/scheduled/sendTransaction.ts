@@ -25,7 +25,7 @@ interface Config {
 const config: Config = functions.config() as Config;
 
 // プライヤースコアの構造体定義
-class PlayerScore {
+class ParticipantScore {
   pubkey: solanaWeb3.PublicKey;
   score: number;
 
@@ -35,20 +35,20 @@ class PlayerScore {
   }
 }
 
-// GameInstruction enumのBorshsシリアライズ設定
+// QuizInstruction enumのBorshsシリアライズ設定
 class SetScoreInstruction {
   instruction: number;
-  scores: PlayerScore[];
+  scores: ParticipantScore[];
 
-  constructor(props: { scores: PlayerScore[] }) {
+  constructor(props: { scores: ParticipantScore[] }) {
     this.instruction = 1; // 1はSetScoresの指示
     this.scores = props.scores;
   }
 }
 
-const PlayerScoreSchema = new Map([
+const ParticipantScoreSchema = new Map([
   [
-    PlayerScore,
+    ParticipantScore,
     {
       kind: "struct",
       fields: [
@@ -66,7 +66,7 @@ const SetScoreInstructionSchema = new Map([
       kind: "struct",
       fields: [
         ["instruction", "u8"],
-        ["scores", [PlayerScore]],
+        ["scores", [ParticipantScore]],
       ],
     },
   ],
@@ -79,9 +79,9 @@ async function setScores(
   connection: solanaWeb3.Connection,
   payerKeypair: solanaWeb3.payerKeypair
 ) {
-  // Game state アカウントを指定(デプロイ時に作成済みと仮定)
+  // Quiz state アカウントを指定(デプロイ時に作成済みと仮定)
   // TODO: YOUR_GAME_STATE_ACCOUNT_PUBLIC_KEYはスマートコントラクトデプロイ後に払い出されるIDを埋める
-  const gameStateAccount = new solanaWeb3.PublicKey(
+  const quizStateAccount = new solanaWeb3.PublicKey(
     "YOUR_GAME_STATE_ACCOUNT_PUBLIC_KEY"
   );
 
@@ -96,7 +96,7 @@ async function setScores(
   const transaction = new solanaWeb3.Transaction().add(
     new solanaWeb3.TransactionInstruction({
       keys: [
-        {pubkey: gameStateAccount, isSigner: false, isWritable: true},
+        {pubkey: quizStateAccount, isSigner: false, isWritable: true},
         ...scores.map(([pubkey]) => ({
           pubkey,
           isSigner: false,
@@ -118,19 +118,19 @@ async function setScores(
 }
 
 // スコアを計算するための関数
-function calculateScores(): PlayerScore[] {
+function calculateScores(): ParticipantScore[] {
   // ここにスコア計算ロジックを追加
   // 仮のスコア計算例
   return [
-    new PlayerScore({
+    new ParticipantScore({
       pubkey: new solanaWeb3.PublicKey("PLAYER1_PUBLIC_KEY"),
       score: 50,
     }),
-    new PlayerScore({
+    new ParticipantScore({
       pubkey: new solanaWeb3.PublicKey("PLAYER2_PUBLIC_KEY"),
       score: 30,
     }),
-    new PlayerScore({
+    new ParticipantScore({
       pubkey: new solanaWeb3.PublicKey("PLAYER3_PUBLIC_KEY"),
       score: 20,
     }),
