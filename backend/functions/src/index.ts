@@ -2,8 +2,8 @@
 // index.ts
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import * as express from "express";
-import * as cors from "cors";
+import express from "express";
+import cors from "cors";
 import * as ServiceAccount from "./service_account.json";
 
 // TODO: ウォレットのキーを利用したauth(firebase authenticationwを利用？)を検討する

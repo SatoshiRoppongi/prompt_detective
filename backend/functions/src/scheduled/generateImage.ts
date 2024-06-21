@@ -17,7 +17,7 @@ import {uploadImageFromUrl} from "../services/storageService";
 import {Quiz, createQuiz, getLatestQuiz} from "../services/quizService";
 
 import OpenAI from "openai";
-import {Participant} from "../services/participationService";
+// import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
 
@@ -71,6 +71,8 @@ export const scheduledGenerateImage =
         // 分配のロジックはすでにコントラクト側に実装されていたので下記は使用しない
         // const betReturns = calculateReturns(latestQuiz);
         // console.log(betReturns);
+
+        // ここで、sendTransactions.tsの内容をimportしたものを使う
       }
 
 
