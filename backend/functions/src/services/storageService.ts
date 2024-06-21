@@ -20,35 +20,6 @@ export const getImageByName = async (name: string) => {
   }
 };
 
-/*
-export const getLatestImage = async () => {
-  try {
-    const [files] = await bucket.getFiles({prefix: "", autoPaginate: false});
-    if (files.length === 0) {
-      throw new Error("No files found in the bucket");
-    }
-
-    const latestFile = files
-      .filter((file) => file.metadata.timeCreated)
-      .sort((a, b) =>
-        (b.metadata.timeCreated || "").localeCompare(
-          a.metadata.timeCreated || ""
-        )
-      )[0];
-    const [url] = await latestFile.getSignedUrl({
-      action: "read",
-      expires: "03-17-2025",
-    });
-    console.log("url:", url);
-    return url;
-  } catch (error) {
-    console.log("f");
-    console.log(error);
-    throw new Error("Failed to retrieve the latest file");
-  }
-};
-*/
-
 // open aiから払い出されたurlから直接画像をstorageに格納する
 export const uploadImageFromUrl = async (url: string, randomName: string) => {
   try {

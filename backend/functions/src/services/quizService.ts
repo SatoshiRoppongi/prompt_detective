@@ -15,6 +15,7 @@ export interface Quiz {
   pot: number; // poolの方がいい？
   createdAt: FieldValue;
   participants: Array<Participant>
+  // 要検討: quizが終わっているか否かのステータスを持つ？
 
     // todo: 必要なら他の問題情報を定義
 }

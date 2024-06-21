@@ -14,9 +14,10 @@ import {FieldValue} from "firebase-admin/firestore";
 dotenv.config();
 
 import {uploadImageFromUrl} from "../services/storageService";
-import {Quiz, createQuiz} from "../services/quizService";
+import {Quiz, createQuiz, getLatestQuiz} from "../services/quizService";
 
 import OpenAI from "openai";
+import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
 
@@ -56,6 +57,22 @@ export const scheduledGenerateImage =
   functions.pubsub.schedule("every day 19:00").
     timeZone("Asia/Tokyo").
     onRun(async (context) => {
+      // TODO: GenerateImageではなく、より汎用的なタームの区切りというニュアンスの変数名に変更することを検討する
+
+      // TODO: 参加者数が1名以下だったら、生成しない条件を入れる
+
+      // 最新のクイズ情報を取得
+      const latestQuiz = await getLatestQuiz();
+      latestQuiz?.participants;
+
+      // ユーザごとのリターン値を計算
+      if (latestQuiz) {
+        const betReturns = calculateReturns(latestQuiz);
+        console.log(betReturns);
+        // todo: betReturnsを利用して、分配コントラクトを実行する
+      }
+
+
       // 画像生成のお題となるプロンプトを生成する
       const geneartedPrompt = await geneartePrompt();
       console.log("generatedPrompt:", geneartedPrompt.choices[0].message.content);
@@ -102,3 +119,35 @@ export const scheduledGenerateImage =
       }
       return null;
     });
+
+const calculateReturns = (quiz: Quiz, k = 2): Partial<Participant>[] => {
+  // ゆくゆくはコントラクト化したい
+  // リターンの計算
+  const participants = quiz.participants;
+  const returns = participants.map((participant) => {
+    return {
+      walletAddress: participant.walletAddress,
+      score: participant.score,
+      bet: participant.bet,
+      betReturn: participant.bet * (1 + participant.score * k),
+    };
+  });
+
+  // 合計リターンの計算
+  const totalReturn = returns.reduce((sum, participant) => sum + participant.betReturn, 0);
+
+  // スケーリングファクターの計算
+  const scalingFactor = quiz.pot / totalReturn;
+
+  // スケーリングされたリターンの計算
+  const scaledReturns = returns.map((participant) => {
+    return {
+      walletAddress: participant.walletAddress,
+      score: participant.score,
+      bet: participant.bet,
+      betReturn: participant.betReturn * scalingFactor,
+    };
+  });
+
+  return scaledReturns;
+};

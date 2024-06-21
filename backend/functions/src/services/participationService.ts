@@ -16,6 +16,7 @@ export interface Participant {
   guessPrompt: string;
   score: number; // similarityの方がいいか？
   bet: number;
+  betReturn: number;
   createdAt: FieldValue;
 }
 
