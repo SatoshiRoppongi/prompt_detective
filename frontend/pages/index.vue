@@ -122,12 +122,10 @@
                   {{ truncateAddress(participant.walletAddress) }}
                   </strong>
                   <!--
-                  TODO: 上記見やすいようにする。
-                  vuetifyにゲージを表示するコンポーネントある？
-                  ・potから掛金を割って%を出す
+                  TODO:
                   ・折りたためるようにする
                   ・上位数名のみ表示する？
-                  ・ユーザの居場所を表示する
+                  ・ユーザの居場所を表示する(赤字+アドレスの横に「(あなた)」にする)
                   -->
                   <v-progress-linear
                   :model-value="(participant.bet / summaryInfo.pot) * 100"
