@@ -13,12 +13,13 @@ pub struct QuizState {
   pub participants: Vec<Pubkey>,
   pub pot: u64,
   pub scores: Vec<u64>, // プレイヤーごとスコア(文字列類似度)を保持
+  pub fee_pot: u64, // 手数料用のフィールド
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum QuizInstruction {
-  JoinQuiz { bet: u64 },
-  SetScores { scores: Vec<(Pubkey, u64)> },
+  JoinQuiz { bet: u64, fee: u64 },
+  Distributes { scores: Vec<(Pubkey, u64)> },
 }
 
 // solana-program-sdkの `entrypoint` を呼び出し。
@@ -34,11 +35,11 @@ fn process_instruction(
   let accounts_iter = &mut accounts.iter();
 
   match instruction {
-    QuizInstruction::JoinQuiz { bet } => {
+    QuizInstruction::JoinQuiz { bet, fee} => {
       let participant_account = next_account_info(accounts_iter)?;
       let quiz_state_account = next_account_info(accounts_iter)?;
 
-      if **participant_account.lamports.borrow() < bet {
+      if **participant_account.lamports.borrow() < bet + fee {
         return Err(ProgramError::InsufficientFunds);
       }
 
@@ -46,14 +47,15 @@ fn process_instruction(
       quiz_state.participants.push(*participant_account.key);
       quiz_state.scores.push(0); // 初期スコアは0
       quiz_state.pot += bet;
+      quiz_state.fee_pot += fee;
 
-      **participant_account.lamports.borrow_mut() -= bet;
-      **quiz_state_account.lamports.borrow_mut() += bet;
+      **participant_account.lamports.borrow_mut() -= bet + fee;
+      **quiz_state_account.lamports.borrow_mut() += bet + fee;
 
       quiz_state.serialize(&mut &mut quiz_state_account.data.borrow_mut()[..])?;
       msg!("Participant {:?} joined the quiz with an entry fee of {}!", participant_account.key, bet);
     }
-    QuizInstruction::SetScores { scores } => {
+    QuizInstruction::Distributes { scores } => {
       let quiz_state_account = next_account_info(accounts_iter)?;
 
       let mut quiz_state: QuizState = QuizState::try_from_slice(&quiz_state_account.data.borrow())?;
@@ -72,6 +74,7 @@ fn process_instruction(
       if total_score == 0 {
         return Err(ProgramError::InvalidArgument);
       }
+
       for (i, participant) in quiz_state.participants.iter().enumerate() {
         // 下の方に記述しているparticipant_accountでうまくいかなかったらこちらをアンコメントアウトする
         // let participant_account = next_account_info(accounts_iter)?;
@@ -82,10 +85,18 @@ fn process_instruction(
   
         **participant_account.lamports.borrow_mut() += share;
       }
+
       quiz_state.pot = 0;
 
       quiz_state.serialize(&mut &mut quiz_state_account.data.borrow_mut()[..])?;
       msg!("Scores set and SOL distributed based on scores!");
+
+      // 余剰手数料の返還
+      if let Some(fee_payer_account) = accounts_iter.next() {
+        // fee_potは人数で割らなくていい？
+        **fee_payer_account.lamports.borrow_mut() += quiz_state.fee_pot;
+        quiz_state.fee_pot = 0;
+      }
     }
   }
 

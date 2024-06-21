@@ -1,13 +1,13 @@
 // plugins/solana.ts
-import { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } from "@solana/web3.js";
+import { Connection, PublicKey, clusterApiUrl, Transaction } from "@solana/web3.js";
 import { defineNuxtPlugin } from "#app";
 import { serialize } from 'borsh';
 import { Buffer } from 'buffer';
 
 class QuizInstruction {
-  JoinQuiz: { bet: number };
+  JoinQuiz: { bet: number, fee: number};
 
-  constructor(properties: { bet: number }) {
+  constructor(properties: { bet: number, fee:number }) {
     this.JoinQuiz = properties;
   }
 }
@@ -18,7 +18,8 @@ const SCHEMA = new Map([
     fields: [
       ['JoinQuiz', {
         kind: 'struct', fields: [
-        ['bet', 'u64']
+          ['bet', 'u64'],
+          ['fee', 'u64']
       ]}]
   ]}]
 ]);
@@ -29,12 +30,12 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.provide("solana", {
     connection,
     PublicKey,
-    async joinQuiz(wallet: any, programId: string, entryFee: number) {
+    async joinQuiz(wallet: any, programId: string, bet: number, fee:number) {
       const programIdPubKey = new PublicKey(programId);
       const participantPubKey = wallet.publicKey;
 
       // serialize
-      const instructionData = serialize(SCHEMA, new QuizInstruction({ bet: entryFee }));
+      const instructionData = serialize(SCHEMA, new QuizInstruction({ bet, fee }));
 
       const transaction = new Transaction().add({
         keys: [
