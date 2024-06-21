@@ -66,10 +66,11 @@ export const scheduledGenerateImage =
       latestQuiz?.participants;
 
       // ユーザごとのリターン値を計算
+
       if (latestQuiz) {
-        const betReturns = calculateReturns(latestQuiz);
-        console.log(betReturns);
-        // todo: betReturnsを利用して、分配コントラクトを実行する
+        // 分配のロジックはすでにコントラクト側に実装されていたので下記は使用しない
+        // const betReturns = calculateReturns(latestQuiz);
+        // console.log(betReturns);
       }
 
 
@@ -120,8 +121,8 @@ export const scheduledGenerateImage =
       return null;
     });
 
+/*
 const calculateReturns = (quiz: Quiz, k = 2): Partial<Participant>[] => {
-  // ゆくゆくはコントラクト化したい
   // リターンの計算
   const participants = quiz.participants;
   const returns = participants.map((participant) => {
@@ -151,3 +152,4 @@ const calculateReturns = (quiz: Quiz, k = 2): Partial<Participant>[] => {
 
   return scaledReturns;
 };
+*/

@@ -4,7 +4,7 @@
       <v-btn @click="connectWallet" rounded="lg" size="x-large" v-bind="props">
         <template v-if="walletAddress" v-slot:prepend>
           {{ balance }} sol
-          <Identicon :value="walletAddress" size="20" />
+          <Identicon :value="walletAddress" :size="20" />
         </template>
         <template v-if="!walletAddress" v-slot:default>
           Connect Wallet

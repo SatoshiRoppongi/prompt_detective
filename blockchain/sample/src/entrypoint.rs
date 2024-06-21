@@ -9,15 +9,15 @@ use solana_program::{
 };
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
-pub struct GameState {
-  pub players: Vec<Pubkey>,
+pub struct QuizState {
+  pub participants: Vec<Pubkey>,
   pub pot: u64,
   pub scores: Vec<u64>, // プレイヤーごとスコア(文字列類似度)を保持
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
-pub enum GameInstruction {
-  JoinGame { entry_fee: u64 },
+pub enum QuizInstruction {
+  JoinQuiz { bet: u64 },
   SetScores { scores: Vec<(Pubkey, u64)> },
 }
 
@@ -29,53 +29,62 @@ fn process_instruction(
   accounts: &[AccountInfo],
   instruction_data: &[u8],
 ) -> ProgramResult {
-  let instruction = GameInstruction::try_from_slice(instruction_data).map_err(|_| ProgramError::InvalidInstructionData)?;
+  let instruction = QuizInstruction::try_from_slice(instruction_data).map_err(|_| ProgramError::InvalidInstructionData)?;
 
   let accounts_iter = &mut accounts.iter();
 
   match instruction {
-    GameInstruction::JoinGame { entry_fee } => {
-      let player_account = next_account_info(accounts_iter)?;
-      let game_state_account = next_account_info(accounts_iter)?;
+    QuizInstruction::JoinQuiz { bet } => {
+      let participant_account = next_account_info(accounts_iter)?;
+      let quiz_state_account = next_account_info(accounts_iter)?;
 
-      if **player_account.lamports.borrow() < entry_fee {
+      if **participant_account.lamports.borrow() < bet {
         return Err(ProgramError::InsufficientFunds);
       }
 
-      let mut game_state: GameState = GameState::try_from_slice(&game_state_account.data.borrow())?;
-      game_state.players.push(*player_account.key);
-      game_state.scores.push(0); // 初期スコアは0
-      game_state.pot += entry_fee;
+      let mut quiz_state: QuizState = QuizState::try_from_slice(&quiz_state_account.data.borrow())?;
+      quiz_state.participants.push(*participant_account.key);
+      quiz_state.scores.push(0); // 初期スコアは0
+      quiz_state.pot += bet;
 
-      **player_account.lamports.borrow_mut() -= entry_fee;
+      **participant_account.lamports.borrow_mut() -= bet;
+      **quiz_state_account.lamports.borrow_mut() += bet;
 
-      game_state.serialize(&mut &mut game_state_account.data.borrow_mut()[..])?;
-      msg!("Player {:?} joined the game with an entry fee of {}!", player_account.key, entry_fee);
+      quiz_state.serialize(&mut &mut quiz_state_account.data.borrow_mut()[..])?;
+      msg!("Participant {:?} joined the quiz with an entry fee of {}!", participant_account.key, bet);
     }
-    GameInstruction::SetScores { scores } => {
-      let game_state_account = next_account_info(accounts_iter)?;
+    QuizInstruction::SetScores { scores } => {
+      let quiz_state_account = next_account_info(accounts_iter)?;
 
-      let mut game_state: GameState = GameState::try_from_slice(&game_state_account.data.borrow())?;
+      let mut quiz_state: QuizState = QuizState::try_from_slice(&quiz_state_account.data.borrow())?;
 
       // 配分の更新
-      for (player, score) in scores {
-        if let Some(index) = game_state.players.iter().position(|&x| x == player) {
-          game_state.scores[index] = score;
+      for (participant, score) in scores {
+        if let Some(index) = quiz_state.participants.iter().position(|&x| x == participant) {
+          quiz_state.scores[index] = score;
         } else {
           return Err(ProgramError::InvalidArgument)
         }
       }
 
       // スコアに基づいてSOLを分配
-      let total_score: u64 = game_state.scores.iter().sum();
-      for (i, player) in game_state.players.iter().enumerate() {
-        let player_account = next_account_info(accounts_iter)?;
-        let share = game_state.scores[i] * game_state.pot / total_score;
-        **player_account.lamports.borrow_mut() += share;
+      let total_score: u64 = quiz_state.scores.iter().sum();
+      if total_score == 0 {
+        return Err(ProgramError::InvalidArgument);
       }
-      game_state.pot = 0;
+      for (i, participant) in quiz_state.participants.iter().enumerate() {
+        // 下の方に記述しているparticipant_accountでうまくいかなかったらこちらをアンコメントアウトする
+        // let participant_account = next_account_info(accounts_iter)?;
+        let share = quiz_state.scores[i] * quiz_state.pot / total_score;
 
-      game_state.serialize(&mut &mut game_state_account.data.borrow_mut()[..])?;
+        
+        let participant_account = accounts_iter.find(|&acc| acc.key == participant).ok_or(ProgramError::InvalidAccountData)?;
+  
+        **participant_account.lamports.borrow_mut() += share;
+      }
+      quiz_state.pot = 0;
+
+      quiz_state.serialize(&mut &mut quiz_state_account.data.borrow_mut()[..])?;
       msg!("Scores set and SOL distributed based on scores!");
     }
   }
