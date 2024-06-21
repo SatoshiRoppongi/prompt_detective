@@ -178,7 +178,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, toRefs} from "vue";
 import { useRuntimeConfig } from "#app";
 import { mdiHelp, mdiArrowDownThick, mdiAccountMultiple, mdiCurrencyUsd} from "@mdi/js";
 

@@ -49,7 +49,7 @@ exports.api = functions.https.onRequest(app);
 // TODO: to be implemented
 /*
 import * as sendTransaction from "./scheduled/sendTransaction";
-exports.scheduledSetScores = sendTransaction.scheduledSetScores;
+exports.scheduledDistributes = sendTransaction.scheduledDistributes;
 */
 
 // secret promptとimageの生成

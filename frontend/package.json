@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
-    "@solana/web3.js": "^1.92.0",
+    "@solana/web3.js": "^1.93.0",
     "h3": "^1.11.1",
     "jayson": "^4.1.0",
     "jdenticon": "^3.3.0",

@@ -52,10 +52,14 @@ export const useWallet = () => {
 
   const joinQuiz = async (bet: number) => {
     const programId = 'YOUR_PROGRAM_ID';
+    // 仮（要見積もり・要調整）
+    // 分配コントラクトを実行する際の手数料を参加者からあらかじめ徴収し
+    // 余ったものを、返還する　
+    const fee = 10000 // lamports
     try {
-      await $solana.joinQuiz(walletAddress.value, programId, bet);
+      await $solana.joinQuiz(window.solana, programId, bet, fee );
       console.log('Quiz joined successfully!');
-    } catch(error:any) {
+    } catch (error:any) {
       console.error('Failed to join the quiz:', error);
     }
   }
@@ -65,5 +69,6 @@ export const useWallet = () => {
     balance,
     connectWallet,
     disconnectWallet,
+    joinQuiz
   };
 }
