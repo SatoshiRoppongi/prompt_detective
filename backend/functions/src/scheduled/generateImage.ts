@@ -60,14 +60,15 @@ export const scheduledGenerateImage =
     onRun(async (context) => {
       // TODO: GenerateImageではなく、より汎用的なタームの区切りというニュアンスの変数名に変更することを検討する
 
-      // TODO: 参加者数が1名以下だったら、生成しない条件を入れる
-
       // 最新のクイズ情報を取得
       const latestQuiz = await getLatestQuiz();
-      latestQuiz?.participants;
 
-      // ユーザごとのリターン値を計算
+      // 最新のクイズの参加者が1人以下だったら分配、新規画像生成を行わない。
+      if (latestQuiz && latestQuiz.participants.length <= 1) {
+        return null;
+      }
 
+      // 参加者ごとのリターン値を計算
       if (latestQuiz) {
         // 分配のロジックはすでにコントラクト側に実装されていたので下記は使用しない
         // const betReturns = calculateReturns(latestQuiz);
