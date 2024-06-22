@@ -43,16 +43,19 @@ const SCHEMA = new Map([
   }],
 ]);
 
-const distributes = async (scores: Array<[string, number]>, participantAccounts: Array<string>) => {
+const distributes = async (scores: Array<[string, number]>) => {
   const programIdPubKey = new PublicKey(programId);
 
   // シリアライズ
   const instructionData = serialize(SCHEMA, new DistributesInstruction({scores}));
 
+  // scoresからparticipantAccountsを生成
+  const participantAccounts = scores.map(([address]) => ({pubkey: new PublicKey(address), isSigner: false, isWritable: true}));
+
   const transaction = new Transaction().add(new TransactionInstruction({
     keys: [
       {pubkey: programIdPubKey, isSigner: false, isWritable: true},
-      ...participantAccounts.map((participant) => ({pubkey: new PublicKey(participant), isSigner: false, isWritable: true})),
+      ...participantAccounts,
       {pubkey: payer.publicKey, isSigner: true, isWritable: true}, // 手数料返還用アカウント
       // 他に必要なアカウントがあれば追加
     ],
