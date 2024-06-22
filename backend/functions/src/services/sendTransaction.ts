@@ -8,10 +8,24 @@ const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 // プログラムID
 const programId = process.env.PROGRAM_ID;
-const payer = Keypair.fromSecretKey(Uint8Array.from([
-  /* シークレットキーのバイト配列 */
-  // envファイルから？
-]));
+
+if (!programId) {
+  throw new Error("PROGRAM_IDが設定されていません。");
+}
+
+// 秘密鍵の読み込みとUint8Arrayへの変換
+const secretKeyString = process.env.SECRET_KEY;
+if (!secretKeyString) {
+  throw new Error("SECRET_KEYが設定されていません。");
+}
+
+const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
+console.log("aaaaaaaaaaa", secretKeyArray.length);
+if (secretKeyArray.length !== 64) {
+  throw new Error("SECRET_KEYの長さが正しくありません。");
+}
+
+const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
 
 // GameInstruction定義
 class DistributesInstruction {
