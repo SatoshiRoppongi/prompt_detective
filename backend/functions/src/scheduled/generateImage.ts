@@ -17,7 +17,7 @@ import {uploadImageFromUrl} from "../services/storageService";
 import {Quiz, createQuiz, getLatestQuiz} from "../services/quizService";
 
 import OpenAI from "openai";
-import distributes from "./sendTransaction";
+import distributes from "../services/sendTransaction";
 // import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
