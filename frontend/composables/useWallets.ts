@@ -4,6 +4,8 @@ interface Window {
 
 declare var window: Window
 
+const config = useRuntimeConfig()
+
 export const useWallet = () => {
   const walletAddress = useState('walletAddress', () => null)
   const balance = useState('balance', () => 0)
@@ -51,7 +53,7 @@ export const useWallet = () => {
   };
 
   const joinQuiz = async (bet: number) => {
-    const programId = 'YOUR_PROGRAM_ID';
+    const programId = config.public.programId
     // 仮（要見積もり・要調整）
     // 分配コントラクトを実行する際の手数料を参加者からあらかじめ徴収し
     // 余ったものを、返還する　

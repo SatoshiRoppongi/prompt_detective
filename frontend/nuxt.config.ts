@@ -11,15 +11,17 @@ export default defineNuxtConfig({
         config.plugins.push(vuetify({ autoImport: true }));
       });
     },
+    "@nuxt/typescript-build",
+    "@nuxtjs/vuetify",
     //...
   ],
   runtimeConfig: {
     public: {
       apiBaseUrl: process.env.API_BASE_URL,
+      programId: process.env.PROGRAM_ID,
     },
   },
   devtools: { enabled: true },
-  buildModules: ["@nuxt/typescript-build", "@nuxtjs/vuetify"],
   plugins: ["@/plugins/vuetify", "@/plugins/solana"],
   vite: {
     // plugings: [vuetify()],

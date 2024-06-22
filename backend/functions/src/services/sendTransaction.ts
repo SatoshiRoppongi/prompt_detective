@@ -7,7 +7,7 @@ import {Buffer} from "buffer";
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 // プログラムID
-const programId = "YOUR_PROGRAM_ID";
+const programId = process.env.PROGRAM_ID;
 const payer = Keypair.fromSecretKey(Uint8Array.from([
   /* シークレットキーのバイト配列 */
   // envファイルから？
@@ -44,6 +44,10 @@ const SCHEMA = new Map([
 ]);
 
 const distributes = async (scores: Array<[string, number]>) => {
+  if (!programId) {
+    // TODO: 適切なハンドリングをする
+    return;
+  }
   const programIdPubKey = new PublicKey(programId);
 
   // シリアライズ
