@@ -17,6 +17,7 @@ import {uploadImageFromUrl} from "../services/storageService";
 import {Quiz, createQuiz, getLatestQuiz} from "../services/quizService";
 
 import OpenAI from "openai";
+import distributes from "./sendTransaction";
 // import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
@@ -73,6 +74,13 @@ export const scheduledGenerateImage =
         // console.log(betReturns);
 
         // ここで、sendTransactions.tsの内容をimportしたものを使う
+        const scores: [string, number][] = latestQuiz.participants.map((participant) => {
+          return [
+            participant.walletAddress,
+            participant.score,
+          ];
+        });
+        await distributes(scores);
       }
 
 
