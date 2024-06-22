@@ -11,8 +11,8 @@ export default defineNuxtConfig({
         config.plugins.push(vuetify({ autoImport: true }));
       });
     },
-    "@nuxt/typescript-build",
-    "@nuxtjs/vuetify",
+    // "@nuxt/typescript-build",
+    // "@nuxtjs/vuetify",
     //...
   ],
   runtimeConfig: {
@@ -21,6 +21,7 @@ export default defineNuxtConfig({
       programId: process.env.PROGRAM_ID,
     },
   },
+  buildModules: ["@nuxt/typescript-build", "@nuxtjs/vuetify"],
   devtools: { enabled: true },
   plugins: ["@/plugins/vuetify", "@/plugins/solana"],
   vite: {
