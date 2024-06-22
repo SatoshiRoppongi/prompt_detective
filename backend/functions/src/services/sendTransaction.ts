@@ -20,12 +20,14 @@ if (!secretKeyString) {
 }
 
 const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
-console.log("aaaaaaaaaaa", secretKeyArray.length);
+console.log("aaaaaaaaaaa", Uint8Array.from(secretKeyArray));
 if (secretKeyArray.length !== 64) {
   throw new Error("SECRET_KEYの長さが正しくありません。");
 }
 
-const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
+const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray), {
+  skipValidation: true,
+});
 
 // GameInstruction定義
 class DistributesInstruction {

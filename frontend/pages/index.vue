@@ -183,7 +183,7 @@ import { mdiHelp, mdiArrowDownThick, mdiAccountMultiple, mdiCurrencyUsd} from "@
 
 import { useWallet } from "~/composables/useWallets";
 
-const { walletAddress } = useWallet();
+const { walletAddress, joinQuiz} = useWallet();
 console.log('walletAddress:', walletAddress.value)
 
 const input = ref("");
@@ -291,6 +291,7 @@ const submitInfo = async () => {
       guessPrompt: promptString.value,
       bet: Number(bet.value),
     };
+    // バックエンドの情報を更新
     const response = await fetch(`${apiUrl}/participation`, {
       method: "POST",
       headers: {
@@ -298,6 +299,12 @@ const submitInfo = async () => {
       },
       body: JSON.stringify(info),
     });
+
+    // コントラクトの情報を更新
+    await joinQuiz(Number(bet.value)); 
+
+
+
   } catch (error) {
     console.error("Error:", error);
   } finally {

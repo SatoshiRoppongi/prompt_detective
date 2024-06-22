@@ -4,9 +4,9 @@ interface Window {
 
 declare var window: Window
 
-const config = useRuntimeConfig()
 
 export const useWallet = () => {
+  const config = useRuntimeConfig()
   const walletAddress = useState('walletAddress', () => null)
   const balance = useState('balance', () => 0)
   const { $solana } = useNuxtApp();
@@ -57,7 +57,7 @@ export const useWallet = () => {
     // 仮（要見積もり・要調整）
     // 分配コントラクトを実行する際の手数料を参加者からあらかじめ徴収し
     // 余ったものを、返還する　
-    const fee = 10000 // lamports
+    const fee = 0.00001 // sol
     try {
       await $solana.joinQuiz(window.solana, programId, bet, fee );
       console.log('Quiz joined successfully!');
