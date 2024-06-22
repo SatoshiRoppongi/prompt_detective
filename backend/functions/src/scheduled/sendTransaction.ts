@@ -6,6 +6,13 @@ import {Buffer} from "buffer";
 // Solana接続設定
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
+// プログラムID
+const programId = "YOUR_PROGRAM_ID";
+const payer = Keypair.fromSecretKey(Uint8Array.from([
+  /* シークレットキーのバイト配列 */
+  // envファイルから？
+]));
+
 // GameInstruction定義
 class DistributesInstruction {
   Distributes: { scores: Array<[string, number]> };
@@ -36,7 +43,7 @@ const SCHEMA = new Map([
   }],
 ]);
 
-const distributes = async (programId: string, payer: Keypair, scores: Array<[string, number]>, participantAccounts: Array<string>) => {
+const distributes = async (scores: Array<[string, number]>, participantAccounts: Array<string>) => {
   const programIdPubKey = new PublicKey(programId);
 
   // シリアライズ
