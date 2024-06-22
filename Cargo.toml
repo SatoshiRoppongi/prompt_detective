@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "blockchain/sample/",
+    "blockchain/prompt_detective/",
     # 他のサブプロジェクトがあればここに追加
 ]

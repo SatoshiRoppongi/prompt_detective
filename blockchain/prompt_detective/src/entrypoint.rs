@@ -26,7 +26,7 @@ pub enum QuizInstruction {
 entrypoint!(process_instruction);
 
 fn process_instruction(
-  program_id: &Pubkey,
+  _program_id: &Pubkey,
   accounts: &[AccountInfo],
   instruction_data: &[u8],
 ) -> ProgramResult {
@@ -36,6 +36,8 @@ fn process_instruction(
 
   match instruction {
     QuizInstruction::JoinQuiz { bet, fee} => {
+      msg!("JoinQuiz instruction received with bet: {}, fee: {}", bet, fee);
+
       let participant_account = next_account_info(accounts_iter)?;
       let quiz_state_account = next_account_info(accounts_iter)?;
 
@@ -56,6 +58,8 @@ fn process_instruction(
       msg!("Participant {:?} joined the quiz with an entry fee of {}!", participant_account.key, bet);
     }
     QuizInstruction::Distributes { scores } => {
+      msg!("Distributes instruction received with scores: {:?}", scores);
+
       let quiz_state_account = next_account_info(accounts_iter)?;
 
       let mut quiz_state: QuizState = QuizState::try_from_slice(&quiz_state_account.data.borrow())?;
