@@ -92,9 +92,12 @@ fn process_instruction(
       msg!("Scores set and SOL distributed based on scores!");
 
       // 余剰手数料の返還
-      if let Some(fee_payer_account) = accounts_iter.next() {
-        // fee_potは人数で割らなくていい？
-        **fee_payer_account.lamports.borrow_mut() += quiz_state.fee_pot;
+      if !quiz_state.participants.is_empty() {
+        let fee_per_participant = quiz_state.fee_pot / (quiz_state.participants.len() as u64);
+        for participant in quiz_state.participants.iter() {
+          let participant_account = accounts_iter.find(|&acc| acc.key == participant).ok_or(ProgramError::InvalidAccountData)?;
+          **participant_account.lamports.borrow_mut() += fee_per_participant;
+        }
         quiz_state.fee_pot = 0;
       }
     }
