@@ -67,15 +67,16 @@ fn process_instruction(
             }
 
             msg!("check quiz_state_account.data.borrow().len(): {}", quiz_state_account.data.borrow().len());
-            msg!("std::mem::sizeof::<QuizState>(): {}", std::mem::size_of::<QuizState>());
+            msg!("std::mem::size_of::<QuizState>(): {}", std::mem::size_of::<QuizState>());
 
             // アカウントのデータ長が期待される長さであることを確認
             if quiz_state_account.data.borrow().len() < std::mem::size_of::<QuizState>() {
                 return Err(ProgramError::InvalidAccountData);
             }
+
             msg!("check quiz_state");
 
-            let mut quiz_state: QuizState = if quiz_state_account.data.borrow().is_empty() {
+            let mut quiz_state: QuizState = if quiz_state_account.data.borrow().iter().all(|&byte| byte == 0) {
                 msg!("first time to create QuizState");
                 QuizState {
                     participants: Vec::new(),
@@ -102,7 +103,7 @@ fn process_instruction(
             **participant_account.lamports.borrow_mut() -= bet + fee;
             **quiz_state_account.lamports.borrow_mut() += bet + fee;
 
-            msg!("quiz_state serializse");
+            msg!("quiz_state serialize");
 
             quiz_state.serialize(&mut &mut quiz_state_account.data.borrow_mut()[..]).map_err(|err| {
                 msg!("Failed to serialize QuizState: {:?}", err);

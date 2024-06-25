@@ -248,6 +248,7 @@ const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`;
 const fetchData = async () => {
   try {
     // quizの情報を取得する
+    console.log('apiUrl: ', apiUrl)
     const quizInfoPromise = await fetch(`${apiUrl}/latestQuiz`);
     if (!quizInfoPromise) {
       throw new Error("問題情報が取得できませんでした");
@@ -258,7 +259,9 @@ const fetchData = async () => {
 
     summaryInfo.totalParticipants = quizInfo.totalParticipants
     summaryInfo.pot = quizInfo.pot
+    if (quizInfo.participants) { 
     summaryInfo.participants = quizInfo.participants.sort((accountA: Participant, accountB: Participant) => accountB.bet - accountA.bet);
+    }
 
     const imageName= quizInfo.id
     quizId.value = quizInfo.id

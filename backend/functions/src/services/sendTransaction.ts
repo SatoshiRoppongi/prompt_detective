@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair} from "@solana/web3.js";
+import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, SystemProgram, VersionedTransaction, TransactionMessage} from "@solana/web3.js";
 import {serialize} from "borsh";
 import {Buffer} from "buffer";
 
@@ -22,13 +22,12 @@ if (!secretKeyString) {
 }
 
 const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
-console.log("aaaaaaaaaaa", Uint8Array.from(secretKeyArray));
 if (secretKeyArray.length !== 64) {
   throw new Error("SECRET_KEYの長さが正しくありません。");
 }
 
 const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray), {
-  skipValidation: true,
+  skipValidation: false,
 });
 
 // GameInstruction定義
@@ -61,7 +60,7 @@ const SCHEMA = new Map([
   }],
 ]);
 
-const distributes = async (scores: Array<[string, number]>) => {
+export const distributes = async (scores: Array<[string, number]>) => {
   if (!programId) {
     // TODO: 適切なハンドリングをする
     return;
@@ -86,11 +85,16 @@ const distributes = async (scores: Array<[string, number]>) => {
   }));
 
   const {blockhash} = await connection.getLatestBlockhash();
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = payer.publicKey;
+  const message = new TransactionMessage({
+    payerKey: payer.publicKey,
+    recentBlockhash: blockhash,
+    instructions: transaction.instructions,
+  }).compileToV0Message();
 
-  transaction.sign(payer);
-  const signature = await connection.sendRawTransaction(transaction.serialize());
+  const versionedTransaction = new VersionedTransaction(message);
+  versionedTransaction.sign([payer]);
+
+  const signature = await connection.sendTransaction(versionedTransaction);
 
   const strategy = {
     signature: signature,
@@ -101,4 +105,34 @@ const distributes = async (scores: Array<[string, number]>) => {
   await connection.confirmTransaction(strategy);
 };
 
-export default distributes;
+export const createQuizStateAccount = async () => {
+  const quizStateKeyPair = Keypair.generate();
+
+  const lamports = await connection.getMinimumBalanceForRentExemption(64); // QuizStateのサイズ
+
+  const transaction = new Transaction().add(
+    SystemProgram.createAccount({
+      fromPubkey: payer.publicKey,
+      newAccountPubkey: quizStateKeyPair.publicKey,
+      lamports,
+      space: 64, // QuizStateのサイズ
+      programId: new PublicKey(programId),
+    })
+  );
+
+  const {blockhash} = await connection.getLatestBlockhash();
+  const message = new TransactionMessage({
+    payerKey: payer.publicKey,
+    recentBlockhash: blockhash,
+    instructions: transaction.instructions,
+  }).compileToV0Message();
+
+  const versionedTransaction = new VersionedTransaction(message);
+  versionedTransaction.sign([payer, quizStateKeyPair]);
+
+  // トランザクションを送信
+  await connection.sendTransaction(versionedTransaction);
+
+  console.log(`QuizState account created: ${quizStateKeyPair.publicKey.toBase58()}`);
+  return quizStateKeyPair.publicKey;
+};

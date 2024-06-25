@@ -14,10 +14,13 @@ export interface Quiz {
   averageScore: number;
   pot: number; // poolの方がいい？
   createdAt: FieldValue;
-  participants: Array<Participant>
+  // participants: Array<Participant>
   // 要検討: quizが終わっているか否かのステータスを持つ？
-
     // todo: 必要なら他の問題情報を定義
+}
+
+export interface QuizWithParticipant extends Quiz {
+  participants: Array<Participant>
 }
 
 export const createQuiz = async (quiz: Quiz): Promise<void> => {
@@ -32,7 +35,7 @@ export const createQuiz = async (quiz: Quiz): Promise<void> => {
   return;
 };
 
-export const getLatestQuiz = async (): Promise<Quiz | null>=> {
+export const getLatestQuiz = async (): Promise<QuizWithParticipant | null>=> {
   try {
     const quizQuerySnapshot = await quizzesCollection
       .orderBy("createdAt", "desc")
@@ -51,15 +54,10 @@ export const getLatestQuiz = async (): Promise<Quiz | null>=> {
     // サブコレクションのドキュメントを取得
     const participantSnapshot = await participantsRef.get();
 
-    if (participantSnapshot.empty) {
-      console.log("No matching participants");
-      return null;
-    }
-
     const participants = participantSnapshot.docs.map((participantDoc) => participantDoc.data());
 
     //
-    return {id: doc.id, ...doc.data(), participants: participants} as Quiz;
+    return {id: doc.id, ...doc.data(), participants: participants} as QuizWithParticipant;
   } catch (error) {
     console.error("Error getting latest document:", error);
     return null;
