@@ -19,6 +19,7 @@ export default defineNuxtConfig({
     public: {
       apiBaseUrl: process.env.API_BASE_URL,
       programId: process.env.PROGRAM_ID,
+      clusterUrl: process.env.CLUSTER_URL
     },
   },
   buildModules: ["@nuxt/typescript-build", "@nuxtjs/vuetify"],

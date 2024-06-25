@@ -54,6 +54,7 @@ export const useWallet = () => {
 
   const joinQuiz = async (bet: number) => {
     const programId = config.public.programId
+    console.log("programId:", programId);
     // 仮（要見積もり・要調整）
     // 分配コントラクトを実行する際の手数料を参加者からあらかじめ徴収し
     // 余ったものを、返還する　
@@ -63,6 +64,7 @@ export const useWallet = () => {
       console.log('Quiz joined successfully!');
     } catch (error:any) {
       console.error('Failed to join the quiz:', error);
+      throw new Error('Failed to sendTransaction');
     }
   }
 
