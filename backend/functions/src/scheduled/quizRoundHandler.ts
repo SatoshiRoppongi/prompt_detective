@@ -14,10 +14,11 @@ import {FieldValue} from "firebase-admin/firestore";
 dotenv.config();
 
 import {uploadImageFromUrl} from "../services/storageService";
-import {Quiz, createQuiz, getLatestQuiz} from "../services/quizService";
+import {Quiz, QuizWithParticipant, createQuiz, getLatestQuiz} from "../services/quizService";
 
 import OpenAI from "openai";
-import distributes from "../services/sendTransaction";
+// import {createQuizStateAccount, distributes} from "../services/sendTransaction";
+import {createQuizStateAccount, distributes} from "../services/sendTransaction";
 // import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
@@ -53,37 +54,47 @@ const generateImage = async (promptString: string) => {
   return imageGeneration;
 };
 
+const callCreateQuizStateAccount = async () => {
+  try {
+    const publicKey = await createQuizStateAccount();
+    return publicKey;
+  } catch (error) {
+    throw new Error(`Error in CreatedQuizStateAccount: ${error}`);
+  }
+};
+
+const fixQuizResult = async (latestQuiz: QuizWithParticipant | null) => {
+  // デバック作業等で distributeトランザクションを作成する必要がある場合trueにする
+  const skipDistribute = false;
+
+  if (!skipDistribute && latestQuiz) {
+    // 最新のクイズ情報から、ウォレットアドレスとスコアの組みを抽出する
+    const scores: [string, number][] = latestQuiz.participants.map((participant) => {
+      return [
+        participant.walletAddress,
+        participant.score,
+      ];
+    });
+    console.log(scores);
+    await distributes(scores);
+  }
+};
+
 // Firebase Function
-export const scheduledGenerateImage =
+export const scheduledQuizRoundHandler =
   functions.pubsub.schedule("every day 19:00").
     timeZone("Asia/Tokyo").
     onRun(async (context) => {
-      // TODO: GenerateImageではなく、より汎用的なタームの区切りというニュアンスの変数名に変更することを検討する
-
-      // 最新のクイズ情報を取得
+      // quizStateAccountを作成する
+      await callCreateQuizStateAccount();
       const latestQuiz = await getLatestQuiz();
 
-      // 最新のクイズの参加者が1人以下だったら分配、新規画像生成を行わない。
+      // 締め対象のクイズの参加者が1人以下だったらsol分配、新規画像生成を行わない
       if (latestQuiz && latestQuiz.participants.length <= 1) {
-        return null;
+        return;
       }
-
-      // 参加者ごとのリターン値を計算
-      if (latestQuiz) {
-        // 分配のロジックはすでにコントラクト側に実装されていたので下記は使用しない
-        // const betReturns = calculateReturns(latestQuiz);
-        // console.log(betReturns);
-
-        // ここで、sendTransactions.tsの内容をimportしたものを使う
-        const scores: [string, number][] = latestQuiz.participants.map((participant) => {
-          return [
-            participant.walletAddress,
-            participant.score,
-          ];
-        });
-        await distributes(scores);
-      }
-
+      // クイズの締め処理を行う
+      await fixQuizResult(latestQuiz);
 
       // 画像生成のお題となるプロンプトを生成する
       const geneartedPrompt = await geneartePrompt();
@@ -97,7 +108,6 @@ export const scheduledGenerateImage =
       }
 
       const generatedImage = await generateImage(secretPrompt);
-
       const imageUrl = generatedImage.data[0].url;
 
       if (!imageUrl) {
@@ -107,7 +117,6 @@ export const scheduledGenerateImage =
 
       // 画像にランダムな名前をつける
       const randomName = uuidv4();
-
 
       try {
         await uploadImageFromUrl(imageUrl, randomName);
@@ -121,46 +130,15 @@ export const scheduledGenerateImage =
           averageScore: 0,
           pot: 0,
           createdAt: FieldValue.serverTimestamp(),
-          participants: [],
         };
 
         // Firestoreにメタデータを保存
         await createQuiz(quiz);
+
+        // quizStateAccountを作成する
+        await callCreateQuizStateAccount();
       } catch (error) {
         console.error("Error generating image:", error);
       }
       return null;
     });
-
-/*
-const calculateReturns = (quiz: Quiz, k = 2): Partial<Participant>[] => {
-  // リターンの計算
-  const participants = quiz.participants;
-  const returns = participants.map((participant) => {
-    return {
-      walletAddress: participant.walletAddress,
-      score: participant.score,
-      bet: participant.bet,
-      betReturn: participant.bet * (1 + participant.score * k),
-    };
-  });
-
-  // 合計リターンの計算
-  const totalReturn = returns.reduce((sum, participant) => sum + participant.betReturn, 0);
-
-  // スケーリングファクターの計算
-  const scalingFactor = quiz.pot / totalReturn;
-
-  // スケーリングされたリターンの計算
-  const scaledReturns = returns.map((participant) => {
-    return {
-      walletAddress: participant.walletAddress,
-      score: participant.score,
-      bet: participant.bet,
-      betReturn: participant.betReturn * scalingFactor,
-    };
-  });
-
-  return scaledReturns;
-};
-*/

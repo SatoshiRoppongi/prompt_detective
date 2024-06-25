@@ -54,8 +54,8 @@ exports.scheduledDistributes = sendTransaction.scheduledDistributes;
 
 // secret promptとimageの生成
 // TODO: to be implemented
-import * as generateImage from "./scheduled/generateImage";
-exports.generateImage = generateImage.scheduledGenerateImage;
+import {scheduledQuizRoundHandler} from "./scheduled/quizRoundHandler";
+exports.quizRoundHandler = scheduledQuizRoundHandler;
 
 // import * as cleanup from "./scheduled/cleanup";
 // exports.cleanupOldUsers = cleanup.cleanupOldUsers;
