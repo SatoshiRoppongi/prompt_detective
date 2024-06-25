@@ -285,6 +285,9 @@ const submitInfo = async () => {
   console.log("Betting:", bet.value);
 
   try {
+    // コントラクトの情報を更新
+    await joinQuiz(Number(bet.value)); 
+
     const info = {
       quizId: quizId.value,
       walletAddress: walletAddress.value,
@@ -300,8 +303,6 @@ const submitInfo = async () => {
       body: JSON.stringify(info),
     });
 
-    // コントラクトの情報を更新
-    await joinQuiz(Number(bet.value)); 
 
 
 

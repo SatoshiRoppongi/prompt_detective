@@ -4,7 +4,9 @@ import {serialize} from "borsh";
 import {Buffer} from "buffer";
 
 // Solana接続設定
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+
+const url = process.env.CLUSTER_URL || clusterApiUrl("devnet");
+const connection = new Connection(url, "confirmed");
 
 // プログラムID
 const programId = process.env.PROGRAM_ID;
