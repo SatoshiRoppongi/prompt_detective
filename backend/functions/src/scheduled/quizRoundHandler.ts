@@ -18,7 +18,7 @@ import {Quiz, QuizWithParticipant, createQuiz, getLatestQuiz} from "../services/
 
 import OpenAI from "openai";
 // import {createQuizStateAccount, distributes} from "../services/sendTransaction";
-import {createQuizStateAccount, distributes} from "../services/sendTransaction";
+import {distributes} from "../services/sendTransaction";
 // import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
@@ -54,15 +54,6 @@ const generateImage = async (promptString: string) => {
   return imageGeneration;
 };
 
-const callCreateQuizStateAccount = async () => {
-  try {
-    const publicKey = await createQuizStateAccount();
-    return publicKey;
-  } catch (error) {
-    throw new Error(`Error in CreatedQuizStateAccount: ${error}`);
-  }
-};
-
 const fixQuizResult = async (latestQuiz: QuizWithParticipant | null) => {
   // デバック作業等で distributeトランザクションを作成する必要がある場合trueにする
   const skipDistribute = false;
@@ -85,8 +76,6 @@ export const scheduledQuizRoundHandler =
   functions.pubsub.schedule("every day 19:00").
     timeZone("Asia/Tokyo").
     onRun(async (context) => {
-      // quizStateAccountを作成する
-      await callCreateQuizStateAccount();
       const latestQuiz = await getLatestQuiz();
 
       // 締め対象のクイズの参加者が1人以下だったらsol分配、新規画像生成を行わない
@@ -134,9 +123,6 @@ export const scheduledQuizRoundHandler =
 
         // Firestoreにメタデータを保存
         await createQuiz(quiz);
-
-        // quizStateAccountを作成する
-        await callCreateQuizStateAccount();
       } catch (error) {
         console.error("Error generating image:", error);
       }

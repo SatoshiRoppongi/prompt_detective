@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, SystemProgram, VersionedTransaction, TransactionMessage} from "@solana/web3.js";
+import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, VersionedTransaction, TransactionMessage} from "@solana/web3.js";
 import {serialize} from "borsh";
 import {Buffer} from "buffer";
 
@@ -103,36 +103,4 @@ export const distributes = async (scores: Array<[string, number]>) => {
   };
 
   await connection.confirmTransaction(strategy);
-};
-
-export const createQuizStateAccount = async () => {
-  const quizStateKeyPair = Keypair.generate();
-
-  const lamports = await connection.getMinimumBalanceForRentExemption(64); // QuizStateのサイズ
-
-  const transaction = new Transaction().add(
-    SystemProgram.createAccount({
-      fromPubkey: payer.publicKey,
-      newAccountPubkey: quizStateKeyPair.publicKey,
-      lamports,
-      space: 64, // QuizStateのサイズ
-      programId: new PublicKey(programId),
-    })
-  );
-
-  const {blockhash} = await connection.getLatestBlockhash();
-  const message = new TransactionMessage({
-    payerKey: payer.publicKey,
-    recentBlockhash: blockhash,
-    instructions: transaction.instructions,
-  }).compileToV0Message();
-
-  const versionedTransaction = new VersionedTransaction(message);
-  versionedTransaction.sign([payer, quizStateKeyPair]);
-
-  // トランザクションを送信
-  await connection.sendTransaction(versionedTransaction);
-
-  console.log(`QuizState account created: ${quizStateKeyPair.publicKey.toBase58()}`);
-  return quizStateKeyPair.publicKey;
 };

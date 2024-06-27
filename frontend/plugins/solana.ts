@@ -50,7 +50,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // serialize
         const instructionData = Buffer.concat([
-          Buffer.from([0]),
+          Buffer.from([1]),
           serialize(SCHEMA, new JoinQuiz({ bet: betBigInt, fee: feeBigInt }))])
         console.log("Serialized instruction data:", Buffer.from(instructionData).toString('hex'));
 
@@ -58,7 +58,12 @@ export default defineNuxtPlugin((nuxtApp) => {
           programId: programIdPubKey,
           keys: [
             { pubkey: participantPubKey, isSigner: true, isWritable: true },
-            { pubkey: programIdPubKey, isSigner: false, isWritable: true }
+            //  { pubkey: programIdPubKey, isSigner: false, isWritable: true }
+            {
+              pubkey: new PublicKey('ChiDxup3Yuoet53bsAzG3jjgEQMuPTAA6sbNCjodJ4o7'),
+              isSigner: false,
+              isWritable: true
+            }
           ],
           data: Buffer.from(instructionData)
         });
