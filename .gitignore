@@ -1,9 +1,68 @@
+# macOS
 .DS_Store
-target
-.env
-!.env.local
-./backend/functions/lib
-service_account.json
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-blockchain/prompt_detective/dist
-blockchain/prompt_detective/test-ledger
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.sample
+
+# Build outputs
+dist/
+build/
+.nuxt/
+.output/
+target/
+lib/
+
+# Logs
+*.log
+logs/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.cache
+.cache/
+
+# Firebase
+service_account.json
+.firebase/
+
+# Solana
+blockchain/prompt_detective/dist/
+blockchain/prompt_detective/test-ledger/
+blockchain/prompt_detective/target/
+
+# Frontend
+frontend/.nuxt/
+frontend/.output/
+frontend/dist/
+frontend/node_modules/
+
+# Backend
+backend/functions/lib/
+backend/functions/node_modules/
+
+# Script temp files
+script/get-pip.py

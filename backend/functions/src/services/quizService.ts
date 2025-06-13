@@ -6,17 +6,28 @@ import {Participant} from "./participationService";
 const db = admin.firestore();
 const quizzesCollection = db.collection("quizzes");
 
+export enum GameStatus {
+  WAITING = "waiting",
+  ACTIVE = "active", 
+  ENDED = "ended",
+  COMPLETED = "completed",
+  CANCELLED = "cancelled"
+}
+
 export interface Quiz {
   id?: string;
   imageName: string | null;
   secretPrompt: string;
   totalParticipants: number;
   averageScore: number;
-  pot: number; // poolの方がいい？
+  pot: number;
+  status: GameStatus;
+  minBet: number;
+  maxParticipants: number;
+  endTime: FieldValue | Date;
   createdAt: FieldValue;
-  // participants: Array<Participant>
-  // 要検討: quizが終わっているか否かのステータスを持つ？
-    // todo: 必要なら他の問題情報を定義
+  winner?: string;
+  winnerScore?: number;
 }
 
 export interface QuizWithParticipant extends Quiz {
@@ -60,6 +71,100 @@ export const getLatestQuiz = async (): Promise<QuizWithParticipant | null>=> {
     return {id: doc.id, ...doc.data(), participants: participants} as QuizWithParticipant;
   } catch (error) {
     console.error("Error getting latest document:", error);
+    return null;
+  }
+};
+
+export const getActiveQuiz = async (): Promise<QuizWithParticipant | null> => {
+  try {
+    const quizQuerySnapshot = await quizzesCollection
+      .where("status", "==", GameStatus.ACTIVE)
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+    
+    if (quizQuerySnapshot.empty) {
+      console.log("No active quizzes found.");
+      return null;
+    }
+
+    const doc = quizQuerySnapshot.docs[0];
+    const participantsRef = doc.ref.collection("participants");
+    const participantSnapshot = await participantsRef.get();
+    const participants = participantSnapshot.docs.map((participantDoc) => participantDoc.data());
+
+    return {id: doc.id, ...doc.data(), participants: participants} as QuizWithParticipant;
+  } catch (error) {
+    console.error("Error getting active quiz:", error);
+    return null;
+  }
+};
+
+export const createGameFromGeneration = async (
+  secretPrompt: string,
+  imageName: string,
+  gameId: string,
+  minBet: number = 100000000, // 0.1 SOL in lamports
+  maxParticipants: number = 100,
+  durationHours: number = 24
+): Promise<void> => {
+  const now = new Date();
+  const endTime = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+
+  const quiz: Quiz = {
+    id: gameId,
+    imageName: imageName,
+    secretPrompt: secretPrompt,
+    totalParticipants: 0,
+    averageScore: 0,
+    pot: 0,
+    status: GameStatus.ACTIVE,
+    minBet: minBet,
+    maxParticipants: maxParticipants,
+    endTime: endTime,
+    createdAt: FieldValue.serverTimestamp(),
+  };
+
+  await quizzesCollection.doc(gameId).set(quiz);
+  console.log(`Game created with ID: ${gameId}`);
+};
+
+export const endGame = async (gameId: string): Promise<void> => {
+  await quizzesCollection.doc(gameId).update({
+    status: GameStatus.ENDED,
+  });
+  console.log(`Game ${gameId} ended`);
+};
+
+export const completeGame = async (
+  gameId: string, 
+  winner: string, 
+  winnerScore: number
+): Promise<void> => {
+  await quizzesCollection.doc(gameId).update({
+    status: GameStatus.COMPLETED,
+    winner: winner,
+    winnerScore: winnerScore,
+  });
+  console.log(`Game ${gameId} completed with winner ${winner}`);
+};
+
+export const getQuizById = async (gameId: string): Promise<QuizWithParticipant | null> => {
+  try {
+    const doc = await quizzesCollection.doc(gameId).get();
+    
+    if (!doc.exists) {
+      console.log("Quiz not found");
+      return null;
+    }
+
+    const participantsRef = doc.ref.collection("participants");
+    const participantSnapshot = await participantsRef.get();
+    const participants = participantSnapshot.docs.map((participantDoc) => participantDoc.data());
+
+    return {id: doc.id, ...doc.data(), participants: participants} as QuizWithParticipant;
+  } catch (error) {
+    console.error("Error getting quiz by ID:", error);
     return null;
   }
 };

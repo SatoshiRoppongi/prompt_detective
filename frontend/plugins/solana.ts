@@ -1,4 +1,4 @@
-import { Connection, PublicKey, clusterApiUrl, Transaction, SendTransactionError } from "@solana/web3.js";
+import { Connection, PublicKey, clusterApiUrl, Transaction, SendTransactionError, ComputeBudgetProgram} from "@solana/web3.js";
 import { defineNuxtPlugin } from "#app";
 import { serialize } from 'borsh';
 import { Buffer } from 'buffer';
@@ -54,13 +54,19 @@ export default defineNuxtPlugin((nuxtApp) => {
           serialize(SCHEMA, new JoinQuiz({ bet: betBigInt, fee: feeBigInt }))])
         console.log("Serialized instruction data:", Buffer.from(instructionData).toString('hex'));
 
-        const transaction = new Transaction().add({
+        const pubkey = new PublicKey('Aqo52TCb2bvQ9AZoGrDo8iYQ9g5NHJoL5c44i3oVR6GE');
+
+        console.log('pubkeyyy: ', pubkey)
+
+        const transaction = new Transaction();
+        transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }));
+        transaction.add({
           programId: programIdPubKey,
           keys: [
             { pubkey: participantPubKey, isSigner: true, isWritable: true },
             //  { pubkey: programIdPubKey, isSigner: false, isWritable: true }
             {
-              pubkey: new PublicKey('ChiDxup3Yuoet53bsAzG3jjgEQMuPTAA6sbNCjodJ4o7'),
+              pubkey: pubkey,
               isSigner: false,
               isWritable: true
             }
@@ -78,7 +84,8 @@ export default defineNuxtPlugin((nuxtApp) => {
         const strategy = {
           signature: signature,
           blockhash: blockhash,
-          lastValidBlockHeight: (await connection.getBlockHeight()) + 150
+          // lastValidBlockHeight: (await connection.getBlockHeight()) + 150
+          lastValidBlockHeight: (await connection.getBlockHeight())
         };
 
         await connection.confirmTransaction(strategy);

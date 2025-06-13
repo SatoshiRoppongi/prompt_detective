@@ -3,7 +3,7 @@
 // 手動で実行するスクリプトです.
 // クライアントアプリやスケジュールトリガーからは呼ばれません
 
-import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, SystemProgram, VersionedTransaction, TransactionMessage, sendAndConfirmTransaction} from "@solana/web3.js";
+import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, SystemProgram, VersionedTransaction, TransactionMessage, sendAndConfirmTransaction, ComputeBudgetProgram} from "@solana/web3.js";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -34,7 +34,10 @@ export const createQuizStateAccount = async () => {
     const quizStateKeyPair = Keypair.generate();
 
     // アカウントサイズを適切に計算（例: 1000バイト）
-    const accountSize = 1000;
+    // const accountSize = 1000;
+    // const accountSize = 100;
+    // const accountSize = 4024;
+    const accountSize = 424;
     const lamports = await connection.getMinimumBalanceForRentExemption(accountSize);
 
     if (!programId) {
@@ -50,6 +53,7 @@ export const createQuizStateAccount = async () => {
         programId: new PublicKey(programId),
       })
     );
+    transaction.add(ComputeBudgetProgram.setComputeUnitLimit({units: 1_000_000}));
 
     const {blockhash, lastValidBlockHeight} = await connection.getLatestBlockhash();
     const message = new TransactionMessage({
@@ -83,16 +87,23 @@ async function initializeQuizState(
 ) {
   try {
     // 初期化命令のデータを作成
+    /*
     const instructionData = Buffer.from([
       0, // 命令の識別子（例: 0 = 初期化）
       // 必要に応じて追加のパラメータをここに含める
-      ...Buffer.alloc(32), // 32バイトの空データを追加（例として）
+      ...Buffer.alloc(64), // 64バイトの空データを追加（例として）
 
     ]);
+    */
+    const instructionData = Buffer.from([0]); // 命令の識別子（例: 0 = 初期化）
+    // 必要に応じて追加のパラメータをここに含める
+
     if (!programId) {
       throw new Error("programId is not defined");
     }
     const programIdPubKey = new PublicKey(programId);
+
+    console.log("programId; ", programId);
 
     // 初期化命令を作成
     const initializeInstruction = new TransactionInstruction({

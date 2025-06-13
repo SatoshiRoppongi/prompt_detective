@@ -33,3 +33,101 @@ export const getLatestQuiz = async (req: Request, res: Response) => {
     res.status(500).send({error: error.message});
   }
 };
+
+export const getActiveQuiz = async (req: Request, res: Response) => {
+  console.log("getActiveQuiz");
+  try {
+    const quiz = await quizService.getActiveQuiz();
+    
+    if (!quiz) {
+      res.status(404).json({error: "No active game found"});
+      return;
+    }
+
+    // Filter out secret information for active games
+    const excludeKeys = ["secretPrompt", "averageScore"];
+    const retObj = Object.fromEntries(
+      Object.entries(quiz).filter(([key]) => !excludeKeys.includes(key))
+    );
+    
+    // Filter participant scores and guesses for active games
+    if (retObj.participants) {
+      retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
+        const {score, guessPrompt, ...rest} = participant;
+        return rest;
+      });
+    }
+    
+    res.status(200).json(retObj);
+  } catch (error: any) {
+    res.status(500).send({error: error.message});
+  }
+};
+
+export const getQuizById = async (req: Request, res: Response) => {
+  const {gameId} = req.params;
+  console.log("getQuizById:", gameId);
+  
+  try {
+    const quiz = await quizService.getQuizById(gameId);
+    
+    if (!quiz) {
+      res.status(404).json({error: "Game not found"});
+      return;
+    }
+
+    // For completed games, show all information including results
+    if (quiz.status === quizService.GameStatus.COMPLETED || quiz.status === quizService.GameStatus.ENDED) {
+      res.status(200).json(quiz);
+    } else {
+      // For active games, filter out secret information
+      const excludeKeys = ["secretPrompt", "averageScore"];
+      const retObj = Object.fromEntries(
+        Object.entries(quiz).filter(([key]) => !excludeKeys.includes(key))
+      );
+      
+      if (retObj.participants) {
+        retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
+          const {score, guessPrompt, ...rest} = participant;
+          return rest;
+        });
+      }
+      
+      res.status(200).json(retObj);
+    }
+  } catch (error: any) {
+    res.status(500).send({error: error.message});
+  }
+};
+
+export const createGame = async (req: Request, res: Response) => {
+  const {secretPrompt, imageName, gameId, minBet, maxParticipants, durationHours} = req.body;
+  console.log("createGame:", {gameId, minBet, maxParticipants, durationHours});
+  
+  try {
+    await quizService.createGameFromGeneration(
+      secretPrompt,
+      imageName,
+      gameId,
+      minBet,
+      maxParticipants,
+      durationHours
+    );
+    
+    res.status(201).json({message: "Game created successfully", gameId});
+  } catch (error: any) {
+    res.status(500).send({error: error.message});
+  }
+};
+
+export const endGame = async (req: Request, res: Response) => {
+  const {gameId} = req.params;
+  console.log("endGame:", gameId);
+  
+  try {
+    await quizService.endGame(gameId);
+    res.status(200).json({message: "Game ended successfully"});
+  } catch (error: any) {
+    res.status(500).send({error: error.message});
+  }
+};

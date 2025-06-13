@@ -38,7 +38,7 @@
                         ref="textareaRef"
                         @focus="handleFocus"
                         @blur="handleBlur"
-                        :disabled="!walletAddress"
+                        :disabled="!walletAddress || gameStatus !== 'active'"
                       >
                         <template v-slot:append>
                           <transition name="fade">
@@ -48,16 +48,21 @@
                               @click="focusTextarea"
                             >
                               <v-icon large>{{ mdiHelp }}</v-icon>
-                              <div v-if="walletAddress">ここをクリックしてください</div>
-                              <div v-else="walletAddress">予想するにはウォレットに接続してください</div>
+                              <div v-if="!walletAddress">予想するにはウォレットに接続してください</div>
+                              <div v-else-if="gameStatus !== 'active'">ゲームがアクティブではありません</div>
+                              <div v-else>ここをクリックしてください</div>
                             </div>
                           </transition>
                         </template>
                       </v-textarea>
                       <div class="d-flex justify-end">
-                        <v-btn v-if="walletAddress" type="submit" :disabled="!promptString"
-                          >送信確認</v-btn
+                        <v-btn 
+                          v-if="walletAddress && gameStatus === 'active'" 
+                          type="submit" 
+                          :disabled="!promptString"
                         >
+                          送信確認
+                        </v-btn>
                       </div>
                     </v-form>
                   </div>
@@ -89,9 +94,33 @@
           </v-col>
           <v-col cols="3">
             <v-card>
-              <v-card-title>クイズサマリー</v-card-title>
+              <v-card-title>
+                <div class="d-flex align-center justify-space-between w-100">
+                  <span>ゲーム情報</span>
+                  <v-chip 
+                    :color="gameStatus === 'active' ? 'green' : gameStatus === 'ended' ? 'red' : 'grey'"
+                    dark
+                    small
+                  >
+                    {{ 
+                      gameStatus === 'active' ? 'アクティブ' : 
+                      gameStatus === 'ended' ? '終了' : 
+                      gameStatus === 'completed' ? '完了' : 'その他'
+                    }}
+                  </v-chip>
+                </div>
+              </v-card-title>
               <v-divider></v-divider>
               <v-card-text>
+                <v-row v-if="gameStatus === 'active' && timeRemaining" class="mb-3">
+                  <v-col cols="6" class="d-flex align-center">
+                    <v-icon class="mr-2"> {{ mdiTimerOutline }}</v-icon>
+                    残り時間
+                  </v-col>
+                  <v-col cols="6" class="text-right">
+                    <div class="headline text-primary"> {{ timeRemaining }}</div>
+                  </v-col>
+                </v-row>
                 <v-row class="mb-3">
                   <v-col cols="6" class="d-flex align-center">
                     <v-icon class="mr-2"> {{ mdiAccountMultiple }}</v-icon>
@@ -111,7 +140,9 @@
                   </v-col>
                 </v-row>
               </v-card-text>
-              <v-card-title>bet金額</v-card-title>
+              <v-card-title>
+                {{ gameStatus === 'completed' || gameStatus === 'ended' ? '最終結果' : 'bet金額' }}
+              </v-card-title>
               <v-divider></v-divider>
               <v-card-text>
                 <v-row v-for="(participant, index) in summaryInfo.participants" v-bind:key="participant.walletAddress" class="mb-2">
@@ -179,7 +210,7 @@
 
 <script setup lang="ts">
 import { useRuntimeConfig } from "#app";
-import { mdiHelp, mdiArrowDownThick, mdiAccountMultiple, mdiCurrencyUsd} from "@mdi/js";
+import { mdiHelp, mdiArrowDownThick, mdiAccountMultiple, mdiCurrencyUsd, mdiTimerOutline} from "@mdi/js";
 
 import { useWallet } from "~/composables/useWallets";
 
@@ -245,25 +276,67 @@ const config = useRuntimeConfig();
 const apiBaseUrl = config.public.apiBaseUrl;
 const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`;
 
+const gameStatus = ref("");
+const endTime = ref<Date | null>(null);
+const timeRemaining = ref("");
+
 const fetchData = async () => {
   try {
-    // quizの情報を取得する
+    // activeなクイズの情報を取得する
     console.log('apiUrl: ', apiUrl)
-    const quizInfoPromise = await fetch(`${apiUrl}/latestQuiz`);
-    if (!quizInfoPromise) {
-      throw new Error("問題情報が取得できませんでした");
+    const quizInfoPromise = await fetch(`${apiUrl}/activeQuiz`);
+    
+    if (!quizInfoPromise.ok) {
+      if (quizInfoPromise.status === 404) {
+        // No active game, try to get latest completed game
+        const latestQuizPromise = await fetch(`${apiUrl}/latestQuiz`);
+        if (latestQuizPromise.ok) {
+          const latestQuiz = await latestQuizPromise.json();
+          console.log('Latest completed quiz:', latestQuiz);
+          
+          // Show completed game results
+          summaryInfo.totalParticipants = latestQuiz.totalParticipants || 0;
+          summaryInfo.pot = latestQuiz.pot || 0;
+          gameStatus.value = latestQuiz.status || "completed";
+          
+          if (latestQuiz.participants) { 
+            summaryInfo.participants = latestQuiz.participants.sort((accountA: Participant, accountB: Participant) => accountB.bet - accountA.bet);
+          }
+
+          quizId.value = latestQuiz.id;
+          const imageName = latestQuiz.id;
+          const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
+          const imageData = await imageInfoPromise.json();
+          if (imageData && imageData.url) {
+            imageUrl.value = imageData.url;
+          }
+        } else {
+          throw new Error("ゲームが見つかりませんでした");
+        }
+        return;
+      } else {
+        throw new Error("問題情報が取得できませんでした");
+      }
     }
 
     const quizInfo = await quizInfoPromise.json()
-    console.log('quizInfo:', quizInfo)
+    console.log('Active quiz info:', quizInfo)
 
-    summaryInfo.totalParticipants = quizInfo.totalParticipants
-    summaryInfo.pot = quizInfo.pot
+    summaryInfo.totalParticipants = quizInfo.totalParticipants || 0
+    summaryInfo.pot = quizInfo.pot || 0
+    gameStatus.value = quizInfo.status || "active"
+    
+    // Set end time for countdown
+    if (quizInfo.endTime) {
+      endTime.value = new Date(quizInfo.endTime.seconds ? quizInfo.endTime.seconds * 1000 : quizInfo.endTime);
+      startCountdown();
+    }
+    
     if (quizInfo.participants) { 
-    summaryInfo.participants = quizInfo.participants.sort((accountA: Participant, accountB: Participant) => accountB.bet - accountA.bet);
+      summaryInfo.participants = quizInfo.participants.sort((accountA: Participant, accountB: Participant) => accountB.bet - accountA.bet);
     }
 
-    const imageName= quizInfo.id
+    const imageName = quizInfo.id
     quizId.value = quizInfo.id
     const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
     const imageData = await imageInfoPromise.json();
@@ -278,6 +351,30 @@ const fetchData = async () => {
   } finally {
     isLoading.value = false; // ローディング状態を解除
   }
+};
+
+const startCountdown = () => {
+  if (!endTime.value) return;
+  
+  const updateCountdown = () => {
+    const now = new Date();
+    const diff = endTime.value!.getTime() - now.getTime();
+    
+    if (diff <= 0) {
+      timeRemaining.value = "ゲーム終了";
+      gameStatus.value = "ended";
+      return;
+    }
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    timeRemaining.value = `${hours}時間 ${minutes}分 ${seconds}秒`;
+  };
+  
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
 };
 
 // コンポーネントがマウントされたときに画像URLを取得
