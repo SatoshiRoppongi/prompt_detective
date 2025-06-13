@@ -2,5 +2,5 @@
     "rust-analyzer.cargo.workspaceRoot": "/Users/roppongi/Desktop/prompt_detective",
     "rust-analyzer.cargo.autoreload": true,
     "rust-analyzer.checkOnSave.command": "clippy",
-    "eslint.workingDirectories": ["./backend/functions"]
+    "eslint.workingDirectories": ["./backend/functions"],
 }

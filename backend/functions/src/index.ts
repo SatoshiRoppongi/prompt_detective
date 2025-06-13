@@ -35,6 +35,10 @@ app.get("/image", imageController.getImage);
 
 // Quiz API Endpoints
 app.get("/latestQuiz", quizController.getLatestQuiz);
+app.get("/activeQuiz", quizController.getActiveQuiz);
+app.get("/quiz/:gameId", quizController.getQuizById);
+app.post("/createGame", quizController.createGame);
+app.put("/endGame/:gameId", quizController.endGame);
 
 // Participation API Endpoints
 app.post("/participation", participationController.createParticipant);
