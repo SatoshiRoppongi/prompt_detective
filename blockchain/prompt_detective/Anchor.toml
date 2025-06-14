@@ -7,11 +7,14 @@ skip-lint = false
 [programs.localnet]
 prompt_detective = "CEbjWJ1jmh5VfpPFJdvwk8HrLFFZEW1f1YQDZ2SfZCVC"
 
+[programs.devnet]
+prompt_detective = "CEbjWJ1jmh5VfpPFJdvwk8HrLFFZEW1f1YQDZ2SfZCVC"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
