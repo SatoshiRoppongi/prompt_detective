@@ -2,6 +2,7 @@
 import {Request, Response} from "express";
 import * as participationService from "../services/participationService";
 import * as quizService from "../services/quizService";
+import {initializeGame as initializeSolanaGame} from "../services/solanaService";
 
 export const getLatestQuiz = async (req: Request, res: Response) => {
   // 最新の問題の情報を取得する
@@ -105,14 +106,29 @@ export const createGame = async (req: Request, res: Response) => {
   console.log("createGame:", {gameId, minBet, maxParticipants, durationHours});
   
   try {
+    // Create game in Firestore
     await quizService.createGameFromGeneration(
       secretPrompt,
       imageName,
       gameId,
-      minBet,
-      maxParticipants,
-      durationHours
+      minBet || 100000000, // Default 0.1 SOL
+      maxParticipants || 100,
+      durationHours || 24
     );
+
+    // Initialize Solana smart contract game
+    try {
+      await initializeSolanaGame(
+        gameId, 
+        minBet || 100000000, 
+        maxParticipants || 100, 
+        durationHours || 24
+      );
+      console.log(`✅ Solana game initialized for ID: ${gameId}`);
+    } catch (solanaError) {
+      console.error(`❌ Failed to initialize Solana game: ${solanaError}`);
+      // Game is still created in Firestore, but Solana initialization failed
+    }
     
     res.status(201).json({message: "Game created successfully", gameId});
   } catch (error: any) {

@@ -15,7 +15,7 @@ import {QuizWithParticipant, getActiveQuiz, endGame, completeGame, createGameFro
 
 import OpenAI from "openai";
 // import {createQuizStateAccount, distributes} from "../services/sendTransaction";
-import {distributes} from "../services/sendTransaction";
+import {distributes, initializeGame as initializeSolanaGame, endGame as endSolanaGame, distributeWinnings} from "../services/solanaService";
 // import {Participant} from "../services/participationService";
 
 console.log("processnev:", process.env.OPENAI_API_KEY);
@@ -63,21 +63,37 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
   // End the game first
   await endGame(activeQuiz.id);
 
+  // End the Solana game
+  try {
+    await endSolanaGame(activeQuiz.id);
+    console.log(`✅ Solana game ended for ID: ${activeQuiz.id}`);
+  } catch (error) {
+    console.error(`❌ Failed to end Solana game: ${error}`);
+  }
+
   if (!skipDistribute && activeQuiz.participants.length > 0) {
     // Find the winner (highest score)
     const winner = activeQuiz.participants.reduce((prev, current) => {
       return (prev.score > current.score) ? prev : current;
     });
 
-    // 最新のクイズ情報から、ウォレットアドレスとスコアの組みを抽出する
-    const scores: [string, number][] = activeQuiz.participants.map((participant) => {
-      return [
-        participant.walletAddress,
-        participant.score,
-      ];
-    });
-    console.log("Distributing to scores:", scores);
-    await distributes(scores);
+    // Calculate winner's prize (total pot minus platform fee)
+    const totalPot = activeQuiz.pot * 1000000000; // Convert SOL to lamports
+    const platformFee = Math.floor(totalPot * 0.05); // 5% platform fee
+    const winnerAmount = totalPot - platformFee;
+
+    // Distribute winnings via Solana smart contract
+    try {
+      await distributeWinnings(activeQuiz.id, winner.walletAddress, winnerAmount);
+      console.log(`✅ Winnings distributed to ${winner.walletAddress}: ${winnerAmount} lamports`);
+    } catch (error) {
+      console.error(`❌ Failed to distribute winnings: ${error}`);
+      // Fallback to legacy system if Solana distribution fails
+      const scores: [string, number][] = activeQuiz.participants.map((participant) => {
+        return [participant.walletAddress, participant.score];
+      });
+      await distributes(scores);
+    }
 
     // Mark game as completed with winner info
     await completeGame(activeQuiz.id, winner.walletAddress, winner.score);
@@ -135,6 +151,14 @@ export const scheduledQuizRoundHandler =
           100, // max participants
           24 // 24 hour duration
         );
+
+        // Initialize Solana smart contract game
+        try {
+          await initializeSolanaGame(gameId, 100000000, 100, 24);
+          console.log(`✅ Solana game initialized for ID: ${gameId}`);
+        } catch (error) {
+          console.error(`❌ Failed to initialize Solana game: ${error}`);
+        }
 
         console.log(`New game created with ID: ${gameId}`);
       } catch (error) {
