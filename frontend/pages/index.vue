@@ -274,7 +274,8 @@ const closeModal = () => {
 
 const config = useRuntimeConfig();
 const apiBaseUrl = config.public.apiBaseUrl;
-const apiUrl = `${apiBaseUrl}/prompt-detective-backend/us-central1/api`;
+// For local development, use direct API endpoints
+const apiUrl = apiBaseUrl;
 
 const gameStatus = ref("");
 const endTime = ref<Date | null>(null);
