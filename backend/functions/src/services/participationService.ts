@@ -73,20 +73,52 @@ export const createParticipant = async (
 };
 
 const calculateScore = async (guessPrompt: string, secretPrompt: string): Promise<number> => {
-  // (ユーザ)推測文字列と、正解(秘密)文字列のレーベンシュタイン距離を計算
-  // TODO: 文字列類似度を測るアルゴリズムはこれで問題ないか。きたるタイミングで要検討
-  // また、免責事項として、レーベンシュタイン距離を用いている旨を、サイトに記載する
+  // 入力の正規化
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, " ") // 複数の空白を単一の空白に
+      .replace(/[^\w\s\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, ""); // 日本語文字とアルファベット、数字のみ残す
+  };
 
-  const levenshteinDistance = distance(guessPrompt, secretPrompt);
+  const normalizedGuess = normalizeText(guessPrompt);
+  const normalizedSecret = normalizeText(secretPrompt);
 
-  // 距離を、一致率（類似度）に変換するために正規化を行う
-  const maxLength = Math.max(guessPrompt.length, secretPrompt.length);
-
-  if (maxLength === 0) {
-    return 100; // 両方の文字列がからの場合は完全一致とする
+  // 完全一致の場合は最高スコア
+  if (normalizedGuess === normalizedSecret) {
+    return 100;
   }
 
-  const score = (1 - levenshteinDistance / maxLength) * 100;
+  // レーベンシュタイン距離を計算
+  const levenshteinDistance = distance(normalizedGuess, normalizedSecret);
+  const maxLength = Math.max(normalizedGuess.length, normalizedSecret.length);
 
-  return score;
+  if (maxLength === 0) {
+    return 100; // 両方の文字列が空の場合は完全一致とする
+  }
+
+  // 基本スコア計算
+  let score = (1 - levenshteinDistance / maxLength) * 100;
+
+  // 単語単位での一致率もチェック（ボーナススコア）
+  const guessWords = normalizedGuess.split(" ").filter(word => word.length > 0);
+  const secretWords = normalizedSecret.split(" ").filter(word => word.length > 0);
+  
+  if (guessWords.length > 0 && secretWords.length > 0) {
+    let wordMatches = 0;
+    for (const guessWord of guessWords) {
+      if (secretWords.some(secretWord => 
+        secretWord.includes(guessWord) || guessWord.includes(secretWord)
+      )) {
+        wordMatches++;
+      }
+    }
+    const wordMatchRatio = wordMatches / Math.max(guessWords.length, secretWords.length);
+    // 単語一致率に基づくボーナス（最大10点）
+    const wordBonus = wordMatchRatio * 10;
+    score = Math.min(100, score + wordBonus);
+  }
+
+  return Math.round(score * 100) / 100; // 小数点第2位まで
 };

@@ -77,23 +77,21 @@ export const getLatestQuiz = async (): Promise<QuizWithParticipant | null>=> {
 
 export const getActiveQuiz = async (): Promise<QuizWithParticipant | null> => {
   try {
-    const quizQuerySnapshot = await quizzesCollection
-      .where("status", "==", GameStatus.ACTIVE)
-      .orderBy("createdAt", "desc")
-      .limit(1)
-      .get();
+    // Get the latest quiz and check if it's active
+    const latestQuiz = await getLatestQuiz();
     
-    if (quizQuerySnapshot.empty) {
-      console.log("No active quizzes found.");
+    if (!latestQuiz) {
+      console.log("No quizzes found.");
       return null;
     }
-
-    const doc = quizQuerySnapshot.docs[0];
-    const participantsRef = doc.ref.collection("participants");
-    const participantSnapshot = await participantsRef.get();
-    const participants = participantSnapshot.docs.map((participantDoc) => participantDoc.data());
-
-    return {id: doc.id, ...doc.data(), participants: participants} as QuizWithParticipant;
+    
+    if (latestQuiz.status === GameStatus.ACTIVE) {
+      console.log("Active quiz found:", latestQuiz.id);
+      return latestQuiz;
+    }
+    
+    console.log("Latest quiz is not active, status:", latestQuiz.status);
+    return null;
   } catch (error) {
     console.error("Error getting active quiz:", error);
     return null;
