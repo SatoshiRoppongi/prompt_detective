@@ -13,6 +13,40 @@
           </v-col>
         </v-row>
         <v-row>
+          <v-col cols="12">
+            <!-- WebSocket Connection Status -->
+            <v-alert
+              v-if="!isConnected && !connectionError"
+              type="info"
+              dense
+              class="mb-2"
+            >
+              リアルタイム接続中...
+            </v-alert>
+            <v-alert
+              v-if="connectionError"
+              type="warning"
+              dense
+              class="mb-2"
+            >
+              リアルタイム接続エラー: {{ connectionError }}
+            </v-alert>
+            <v-alert
+              v-if="isConnected"
+              type="success"
+              dense
+              class="mb-2"
+            >
+              ✅ リアルタイム接続済み
+            </v-alert>
+            
+            <ErrorAlert 
+              :error-state="errorState" 
+              @retry="retryFailedOperation"
+            />
+          </v-col>
+        </v-row>
+        <v-row>
           <v-col cols="3">
             <v-card>
               <v-card-title>Advertisement</v-card-title>
@@ -214,7 +248,7 @@ import { mdiHelp, mdiArrowDownThick, mdiAccountMultiple, mdiCurrencyUsd, mdiTime
 
 import { useWallet } from "~/composables/useWallets";
 
-const { walletAddress, joinQuiz} = useWallet();
+const { walletAddress, joinQuiz: joinQuizWallet} = useWallet();
 console.log('walletAddress:', walletAddress.value)
 
 const input = ref("");
@@ -272,10 +306,22 @@ const closeModal = () => {
   showDialog.value = false;
 };
 
-const config = useRuntimeConfig();
-const apiBaseUrl = config.public.apiBaseUrl;
-// For local development, use direct API endpoints
-const apiUrl = apiBaseUrl;
+import { useErrorHandler } from '~/composables/useErrorHandler';
+import { useApi } from '~/composables/useApi';
+import { useRealtime } from '~/composables/useRealtime';
+
+const { errorState, clearError, handleError } = useErrorHandler();
+const api = useApi();
+const { 
+  isConnected, 
+  connectionError, 
+  quizData: realtimeQuizData, 
+  participants: realtimeParticipants, 
+  gameStatus: realtimeGameStatus,
+  initializeWithQuiz,
+  joinQuiz: joinQuizRoom,
+  leaveQuiz: leaveQuizRoom
+} = useRealtime();
 
 const gameStatus = ref("");
 const endTime = ref<Date | null>(null);
@@ -283,16 +329,18 @@ const timeRemaining = ref("");
 
 const fetchData = async () => {
   try {
-    // activeなクイズの情報を取得する
-    console.log('apiUrl: ', apiUrl)
-    const quizInfoPromise = await fetch(`${apiUrl}/activeQuiz`);
+    clearError();
+    let quizInfo: any;
     
-    if (!quizInfoPromise.ok) {
-      if (quizInfoPromise.status === 404) {
-        // No active game, try to get latest completed game
-        const latestQuizPromise = await fetch(`${apiUrl}/latestQuiz`);
-        if (latestQuizPromise.ok) {
-          const latestQuiz = await latestQuizPromise.json();
+    try {
+      // activeなクイズの情報を取得する
+      quizInfo = await api.get('/activeQuiz');
+      console.log('Active quiz info:', quizInfo);
+    } catch (error: any) {
+      // No active game, try to get latest completed game
+      if (error.response?.status === 404) {
+        try {
+          const latestQuiz: any = await api.get('/latestQuiz');
           console.log('Latest completed quiz:', latestQuiz);
           
           // Show completed game results
@@ -306,26 +354,27 @@ const fetchData = async () => {
 
           quizId.value = latestQuiz.id;
           const imageName = latestQuiz.id;
-          const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
-          const imageData = await imageInfoPromise.json();
+          const imageData: any = await api.get(`/image?name=${imageName}`);
           if (imageData && imageData.url) {
             imageUrl.value = imageData.url;
           }
-        } else {
-          throw new Error("ゲームが見つかりませんでした");
+          
+          // Initialize real-time connection with completed game data
+          initializeWithQuiz(latestQuiz);
+          return;
+        } catch (latestError) {
+          gameStatus.value = "no_game";
+          handleError(latestError, 'latest quiz fetch');
+          return;
         }
-        return;
       } else {
-        throw new Error("問題情報が取得できませんでした");
+        throw error;
       }
     }
 
-    const quizInfo = await quizInfoPromise.json()
-    console.log('Active quiz info:', quizInfo)
-
-    summaryInfo.totalParticipants = quizInfo.totalParticipants || 0
-    summaryInfo.pot = quizInfo.pot || 0
-    gameStatus.value = quizInfo.status || "active"
+    summaryInfo.totalParticipants = quizInfo.totalParticipants || 0;
+    summaryInfo.pot = quizInfo.pot || 0;
+    gameStatus.value = quizInfo.status || "active";
     
     // Set end time for countdown
     if (quizInfo.endTime) {
@@ -337,20 +386,24 @@ const fetchData = async () => {
       summaryInfo.participants = quizInfo.participants.sort((accountA: Participant, accountB: Participant) => accountB.bet - accountA.bet);
     }
 
-    const imageName = quizInfo.id
-    quizId.value = quizInfo.id
-    const imageInfoPromise = await fetch(`${apiUrl}/image?name=${imageName}`);
-    const imageData = await imageInfoPromise.json();
+    const imageName = quizInfo.id;
+    quizId.value = quizInfo.id;
+    const imageData: any = await api.get(`/image?name=${imageName}`);
     if (imageData && imageData.url) {
-      imageUrl.value = imageData.url; // 取得した画像URLをセット
+      imageUrl.value = imageData.url;
     } else {
       throw new Error("レスポンスにurlプロパティがありません");
     }
+    
+    // Initialize real-time connection with active game data
+    initializeWithQuiz(quizInfo);
+    
   } catch (error) {
-    console.error("Error fetching image URL:", error);
-    errorMessage.value = "画像を取得できませんでした。";
+    console.error("Error fetching data:", error);
+    gameStatus.value = "error";
+    handleError(error, 'data fetch');
   } finally {
-    isLoading.value = false; // ローディング状態を解除
+    isLoading.value = false;
   }
 };
 
@@ -378,16 +431,54 @@ const startCountdown = () => {
   setInterval(updateCountdown, 1000);
 };
 
+const retryFailedOperation = () => {
+  fetchData();
+};
+
+// Watch for real-time updates and sync with UI
+watch(realtimeQuizData, (newQuizData) => {
+  if (newQuizData) {
+    summaryInfo.totalParticipants = newQuizData.totalParticipants || 0;
+    summaryInfo.pot = newQuizData.pot || 0;
+    gameStatus.value = newQuizData.status || "active";
+    
+    if (newQuizData.endTime) {
+      endTime.value = new Date(newQuizData.endTime.seconds ? newQuizData.endTime.seconds * 1000 : newQuizData.endTime);
+    }
+  }
+}, { deep: true });
+
+watch(realtimeParticipants, (newParticipants) => {
+  if (newParticipants) {
+    summaryInfo.participants = [...newParticipants];
+  }
+}, { deep: true });
+
+watch(realtimeGameStatus, (newStatus) => {
+  if (newStatus) {
+    gameStatus.value = newStatus;
+  }
+});
+
 // コンポーネントがマウントされたときに画像URLを取得
 onMounted(fetchData);
+
+// クリーンアップ
+onUnmounted(() => {
+  if (quizId.value) {
+    leaveQuizRoom(quizId.value);
+  }
+});
 
 const submitInfo = async () => {
   console.log("Form submitted with input:", input.value);
   console.log("Betting:", bet.value);
 
   try {
+    clearError();
+    
     // コントラクトの情報を更新
-    await joinQuiz(Number(bet.value)); 
+    await joinQuizWallet(Number(bet.value)); 
 
     const info = {
       quizId: quizId.value,
@@ -395,20 +486,16 @@ const submitInfo = async () => {
       guessPrompt: promptString.value,
       bet: Number(bet.value),
     };
+    
     // バックエンドの情報を更新
-    const response = await fetch(`${apiUrl}/participation`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(info),
-    });
-
-
-
-
+    await api.post('/participation', info);
+    
+    // 成功時に最新データを再取得
+    await fetchData();
+    
   } catch (error) {
     console.error("Error:", error);
+    handleError(error, 'participation submission');
   } finally {
     closeModal();
   }

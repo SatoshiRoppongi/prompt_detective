@@ -2,18 +2,74 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    
+    // Quiz collection rules
+    match /quizzes/{quizId} {
+      // Allow read access to quiz information
+      allow read: if true;
+      
+      // Only allow server-side creation and updates
+      allow create, update: if false;
+      
+      // Allow deletion only by admin (server-side)
+      allow delete: if false;
+      
+      // Participants subcollection
+      match /participants/{participantId} {
+        // Allow read access to all participants
+        allow read: if true;
+        
+        // Only allow server-side creation 
+        allow create, update: if false;
+        
+        // No deletion allowed
+        allow delete: if false;
+      }
+    }
+    
+    // User collection rules
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can create their own profile
+      allow create: if request.auth != null && request.auth.uid == userId
+        && validateUserData();
+      
+      // Users can update their own profile  
+      allow update: if request.auth != null && request.auth.uid == userId
+        && validateUserData();
+      
+      // No deletion allowed
+      allow delete: if false;
+    }
+    
+    // Admin collection (server-side only)
+    match /admin/{document} {
+      allow read, write: if false;
+    }
+    
+    // Helper functions
+    function validateUserData() {
+      return request.resource.data.keys().hasAll(['walletAddress', 'createdAt'])
+        && request.resource.data.walletAddress is string
+        && request.resource.data.walletAddress.size() >= 32
+        && request.resource.data.walletAddress.size() <= 44;
+    }
+    
+    function validateParticipationData() {
+      return request.resource.data.keys().hasAll(['walletAddress', 'guessPrompt', 'bet', 'createdAt'])
+        && request.resource.data.walletAddress is string
+        && request.resource.data.guessPrompt is string
+        && request.resource.data.bet is number
+        && request.resource.data.bet >= 0
+        && request.resource.data.guessPrompt.size() >= 3
+        && request.resource.data.guessPrompt.size() <= 500;
+    }
+    
+    // Deny all other access
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2024, 7, 14);
+      allow read, write: if false;
     }
   }
 }
