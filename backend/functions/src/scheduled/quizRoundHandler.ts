@@ -12,6 +12,10 @@ dotenv.config();
 
 import {uploadImageFromUrl} from "../services/storageService";
 import {QuizWithParticipant, getActiveQuiz, endGame, completeGame, createGameFromGeneration} from "../services/quizService";
+import {
+  getSchedulerConfig,
+  recordSchedulerRun
+} from "../services/schedulerService";
 
 import OpenAI from "openai";
 // import {createQuizStateAccount, distributes} from "../services/sendTransaction";
@@ -100,69 +104,127 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
   }
 };
 
+// Extracted logic for reuse by both scheduled and manual runs
+export const runQuizGeneration = async (): Promise<{ success: boolean; error?: string; gamesGenerated?: number }> => {
+  try {
+    console.log("🎮 Starting quiz generation process");
+    
+    // Check scheduler configuration
+    const config = await getSchedulerConfig();
+    if (!config) {
+      const error = "Failed to get scheduler configuration";
+      console.error(error);
+      return { success: false, error };
+    }
+    
+    if (!config.enabled) {
+      const message = "Scheduler is disabled, skipping quiz generation";
+      console.log(message);
+      await recordSchedulerRun("skipped", message);
+      return { success: true, error: message, gamesGenerated: 0 };
+    }
+    
+    // Get current active quiz instead of latest
+    const activeQuiz = await getActiveQuiz();
+
+    // Check minimum participants threshold
+    const minParticipants = config.minParticipants || 2;
+    if (activeQuiz && activeQuiz.participants.length < minParticipants) {
+      const message = `Active quiz has ${activeQuiz.participants.length} participants (minimum: ${minParticipants}), skipping finalization`;
+      console.log(message);
+      await recordSchedulerRun("skipped", message);
+      return { success: true, error: message, gamesGenerated: 0 };
+    }
+    
+    // クイズの締め処理を行う
+    await fixQuizResult(activeQuiz);
+
+    // Skip generation if auto generation is disabled
+    if (!config.autoGeneration) {
+      const message = "Auto generation is disabled, only finalizing existing quiz";
+      console.log(message);
+      await recordSchedulerRun("success", message, 0);
+      return { success: true, error: message, gamesGenerated: 0 };
+    }
+
+    // 画像生成のお題となるプロンプトを生成する
+    const geneartedPrompt = await geneartePrompt();
+    console.log("generatedPrompt:", geneartedPrompt.choices[0].message.content);
+
+    const secretPrompt = geneartedPrompt.choices[0].message.content;
+
+    if (!secretPrompt) {
+      const error = "Failed to generate secret prompt";
+      console.error(error);
+      return { success: false, error };
+    }
+
+    const generatedImage = await generateImage(secretPrompt);
+    const imageUrl = generatedImage.data[0].url;
+
+    if (!imageUrl) {
+      const error = "Failed to generate image";
+      console.error(error);
+      return { success: false, error };
+    }
+
+    // 画像にランダムな名前をつける
+    const gameId = uuidv4();
+
+    try {
+      await uploadImageFromUrl(imageUrl, gameId);
+      console.log("Image generated and uploaded successfully");
+
+      // Use configuration values for game creation
+      await createGameFromGeneration(
+        secretPrompt,
+        `${gameId}.jpg`,
+        gameId,
+        config.defaultMinBet,
+        config.defaultMaxParticipants,
+        config.defaultDuration
+      );
+
+      // Initialize Solana smart contract game
+      try {
+        await initializeSolanaGame(
+          gameId, 
+          config.defaultMinBet, 
+          config.defaultMaxParticipants, 
+          config.defaultDuration
+        );
+        console.log(`✅ Solana game initialized for ID: ${gameId}`);
+      } catch (error) {
+        console.error(`❌ Failed to initialize Solana game: ${error}`);
+      }
+
+      console.log(`✅ New game created with ID: ${gameId}`);
+      await recordSchedulerRun("success", undefined, 1);
+      return { success: true, gamesGenerated: 1 };
+      
+    } catch (error: any) {
+      console.error("Error generating image or creating game:", error);
+      return { success: false, error: error.message };
+    }
+  } catch (error: any) {
+    console.error("Error in quiz generation:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Firebase Function
 export const scheduledQuizRoundHandler =
   functions.pubsub.schedule("every day 19:00").
     timeZone("Asia/Tokyo").
     onRun(async () => {
-      // Get current active quiz instead of latest
-      const activeQuiz = await getActiveQuiz();
-
-      // 締め対象のクイズの参加者が1人以下だったらsol分配、新規画像生成を行わない
-      if (activeQuiz && activeQuiz.participants.length <= 1) {
-        console.log("Active quiz has 1 or fewer participants, skipping finalization");
-        return;
+      console.log("📅 Scheduled quiz round handler triggered");
+      
+      const result = await runQuizGeneration();
+      
+      if (!result.success && result.error && !result.error.includes("skipping") && !result.error.includes("disabled")) {
+        await recordSchedulerRun("failed", result.error);
+        console.error(`❌ Scheduled run failed: ${result.error}`);
       }
-      // クイズの締め処理を行う
-      await fixQuizResult(activeQuiz);
-
-      // 画像生成のお題となるプロンプトを生成する
-      const geneartedPrompt = await geneartePrompt();
-      console.log("generatedPrompt:", geneartedPrompt.choices[0].message.content);
-
-      const secretPrompt = geneartedPrompt.choices[0].message.content;
-
-      if (!secretPrompt) {
-        console.error("Failed to generate secret prompt");
-        return null;
-      }
-
-      const generatedImage = await generateImage(secretPrompt);
-      const imageUrl = generatedImage.data[0].url;
-
-      if (!imageUrl) {
-        console.error("Failed to generate image");
-        return null;
-      }
-
-      // 画像にランダムな名前をつける
-      const gameId = uuidv4();
-
-      try {
-        await uploadImageFromUrl(imageUrl, gameId);
-        console.log("Image generated and uploaded successfully");
-
-        // Use the new game creation method with proper lifecycle management
-        await createGameFromGeneration(
-          secretPrompt,
-          `${gameId}.jpg`,
-          gameId,
-          100000000, // 0.1 SOL minimum bet
-          100, // max participants
-          24 // 24 hour duration
-        );
-
-        // Initialize Solana smart contract game
-        try {
-          await initializeSolanaGame(gameId, 100000000, 100, 24);
-          console.log(`✅ Solana game initialized for ID: ${gameId}`);
-        } catch (error) {
-          console.error(`❌ Failed to initialize Solana game: ${error}`);
-        }
-
-        console.log(`New game created with ID: ${gameId}`);
-      } catch (error) {
-        console.error("Error generating image or creating game:", error);
-      }
+      
       return null;
     });

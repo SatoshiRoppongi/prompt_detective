@@ -26,6 +26,7 @@ import * as userController from "./controllers/userController";
 import * as imageController from "./controllers/imageController";
 import * as quizController from "./controllers/quizController";
 import * as participationController from "./controllers/participationController";
+import * as adminController from "./controllers/adminController";
 import {errorHandler} from "./middleware/errorHandler";
 import {validateCreateGame, validateParticipation, validateGameId} from "./middleware/validation";
 import {optionalAuth, requireAdmin} from "./middleware/auth";
@@ -64,7 +65,22 @@ app.get("/health", (_req, res) => {
   res.json({status: "OK", timestamp: new Date().toISOString()});
 });
 
-// Admin endpoints (development only)
+// Admin endpoints 
+app.get("/admin/status", requireAdmin, adminController.getSystemStatus);
+app.get("/admin/games", requireAdmin, adminController.getActiveGames);
+app.get("/admin/games/:gameId", requireAdmin, adminController.getGameDetails);
+app.post("/admin/games/end", requireAdmin, adminController.forceEndGame);
+app.post("/admin/games/extend", requireAdmin, adminController.extendGame);
+app.post("/admin/games/emergency", requireAdmin, adminController.createEmergencyGame);
+
+// Scheduler management endpoints
+app.get("/admin/scheduler/status", requireAdmin, adminController.getSchedulerStatus);
+app.put("/admin/scheduler/settings", requireAdmin, adminController.updateSchedulerSettings);
+app.post("/admin/scheduler/toggle", requireAdmin, adminController.toggleScheduler);
+app.get("/admin/scheduler/history", requireAdmin, adminController.getSchedulerHistory);
+app.post("/admin/scheduler/run", requireAdmin, adminController.runSchedulerManually);
+
+// Legacy admin endpoints (development only)
 app.post("/admin/createGame", gameCreationRateLimit, validateCreateGame, quizController.createGame);
 app.put("/admin/endGame/:gameId", validateGameId, quizController.endGame);
 
