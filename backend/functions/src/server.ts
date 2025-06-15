@@ -4,6 +4,7 @@ import * as admin from "firebase-admin";
 import express from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
+import { createServer } from "http";
 
 // Load environment variables
 dotenv.config();
@@ -21,14 +22,22 @@ try {
   process.exit(1);
 }
 
-const app = express();
-app.use(cors({origin: true}));
-app.use(express.json());
-
 import * as userController from "./controllers/userController";
 import * as imageController from "./controllers/imageController";
 import * as quizController from "./controllers/quizController";
 import * as participationController from "./controllers/participationController";
+import {errorHandler} from "./middleware/errorHandler";
+import {validateCreateGame, validateParticipation, validateGameId} from "./middleware/validation";
+import {optionalAuth, requireAdmin} from "./middleware/auth";
+import {generalRateLimit, participationRateLimit, gameCreationRateLimit} from "./middleware/rateLimit";
+import {initializeWebSocket} from "./services/realtimeService";
+
+const app = express();
+app.use(cors({origin: true}));
+app.use(express.json());
+
+// Apply general rate limiting to all endpoints
+app.use(generalRateLimit);
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -41,19 +50,23 @@ app.delete("/users/:id", userController.deleteUser);
 app.get("/image", imageController.getImage);
 
 // Quiz API Endpoints
-app.get("/latestQuiz", quizController.getLatestQuiz);
-app.get("/activeQuiz", quizController.getActiveQuiz);
-app.get("/quiz/:gameId", quizController.getQuizById);
-app.post("/createGame", quizController.createGame);
-app.put("/endGame/:gameId", quizController.endGame);
+app.get("/latestQuiz", optionalAuth, quizController.getLatestQuiz);
+app.get("/activeQuiz", optionalAuth, quizController.getActiveQuiz);
+app.get("/quiz/:gameId", optionalAuth, validateGameId, quizController.getQuizById);
+app.post("/createGame", gameCreationRateLimit, requireAdmin, validateCreateGame, quizController.createGame);
+app.put("/endGame/:gameId", requireAdmin, validateGameId, quizController.endGame);
 
 // Participation API Endpoints
-app.post("/participation", participationController.createParticipant);
+app.post("/participation", participationRateLimit, validateParticipation, participationController.createParticipant);
 
 // Health check endpoint
 app.get("/health", (_req, res) => {
   res.json({status: "OK", timestamp: new Date().toISOString()});
 });
+
+// Admin endpoints (development only)
+app.post("/admin/createGame", gameCreationRateLimit, validateCreateGame, quizController.createGame);
+app.put("/admin/endGame/:gameId", validateGameId, quizController.endGame);
 
 // Solana test endpoint
 app.get("/test-solana", async (_req, res) => {
@@ -77,12 +90,20 @@ app.get("/test-solana", async (_req, res) => {
   }
 });
 
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
+// Create HTTP server and initialize WebSocket
+const server = createServer(app);
+initializeWebSocket(server);
+
+server.listen(PORT, () => {
   console.log(`🚀 Development server running at http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🎮 Active quiz: http://localhost:${PORT}/activeQuiz`);
+  console.log(`⚡ WebSocket server initialized for real-time updates`);
 });
 
 export default app;

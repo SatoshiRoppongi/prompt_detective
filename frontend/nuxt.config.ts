@@ -17,6 +17,7 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
+      apiBase: process.env.API_BASE_URL || "http://localhost:5001",
       apiBaseUrl: process.env.API_BASE_URL,
       programId: process.env.PROGRAM_ID,
       clusterUrl: process.env.CLUSTER_URL,
