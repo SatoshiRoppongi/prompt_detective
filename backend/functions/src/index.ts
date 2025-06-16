@@ -23,6 +23,9 @@ import * as imageController from "./controllers/imageController";
 import * as quizController from "./controllers/quizController";
 import * as participationController from "./controllers/participationController";
 import * as leaderboardController from "./controllers/leaderboardController";
+import * as resultController from "./controllers/resultController";
+import * as distributionController from "./controllers/distributionController";
+import * as gameStateController from "./controllers/gameStateController";
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -33,6 +36,13 @@ app.delete("/users/:id", userController.deleteUser);
 
 // Image API Endpoints
 app.get("/image", imageController.getImage);
+app.post("/images/generate", imageController.generateImage);
+app.post("/images/:imageId/upload", imageController.uploadImage);
+app.post("/images/optimize-prompt", imageController.optimizePrompt);
+app.post("/images/random-prompt", imageController.generateRandomPrompt);
+app.get("/images/:imageId", imageController.getImageDetails);
+app.get("/images", imageController.getImageHistory);
+app.get("/images/stats/overview", imageController.getImageStats);
 
 // Quiz API Endpoints
 app.get("/latestQuiz", quizController.getLatestQuiz);
@@ -47,6 +57,30 @@ app.post("/participation", participationController.createParticipant);
 // Leaderboard API Endpoints
 app.get("/leaderboard/:quizId", leaderboardController.getLeaderboard);
 app.get("/leaderboard/:quizId/rank", leaderboardController.getUserRank);
+
+// Result API Endpoints
+app.get("/results/:quizId", resultController.getQuizResult);
+app.get("/results", resultController.getQuizResultHistory);
+app.post("/results/:quizId/calculate", resultController.calculateQuizResult);
+app.put("/results/:quizId/distribution", resultController.updateDistributionStatus);
+app.get("/statistics", resultController.getQuizStatistics);
+
+// Distribution API Endpoints
+app.get("/distributions/:quizId", distributionController.getDistributionHistory);
+app.get("/distributions", distributionController.getAllDistributionHistory);
+app.post("/distributions/:quizId/execute", distributionController.manualDistribution);
+app.post("/distributions/pending", distributionController.distributePendingPrizes);
+app.get("/treasury/stats", distributionController.getTreasuryStats);
+app.get("/distributions/health", distributionController.getDistributionHealth);
+
+// Game State API Endpoints
+app.get("/gamestate/:quizId", gameStateController.getGameState);
+app.post("/gamestate/:quizId/initialize", gameStateController.initializeGameState);
+app.put("/gamestate/:quizId/update", gameStateController.updateGameState);
+app.put("/gamestate/:quizId/transition", gameStateController.transitionPhase);
+app.get("/gamestate", gameStateController.getActiveGameStates);
+app.put("/gamestate/update-all", gameStateController.updateAllGameStates);
+app.get("/gamestate/:quizId/history", gameStateController.getGameStateHistory);
 
 // TODO: cloud storageから画像を格納、取得するエンドポイントを追加する
 
@@ -65,6 +99,10 @@ exports.scheduledDistributes = sendTransaction.scheduledDistributes;
 // TODO: to be implemented
 import {scheduledQuizRoundHandler} from "./scheduled/quizRoundHandler";
 exports.quizRoundHandler = scheduledQuizRoundHandler;
+
+// Game state updater
+import {scheduledGameStateUpdater} from "./scheduled/gameStateUpdater";
+exports.gameStateUpdater = scheduledGameStateUpdater;
 
 // import * as cleanup from "./scheduled/cleanup";
 // exports.cleanupOldUsers = cleanup.cleanupOldUsers;
