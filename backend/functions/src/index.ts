@@ -22,6 +22,7 @@ import * as userController from "./controllers/userController";
 import * as imageController from "./controllers/imageController";
 import * as quizController from "./controllers/quizController";
 import * as participationController from "./controllers/participationController";
+import * as leaderboardController from "./controllers/leaderboardController";
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -42,6 +43,10 @@ app.put("/endGame/:gameId", quizController.endGame);
 
 // Participation API Endpoints
 app.post("/participation", participationController.createParticipant);
+
+// Leaderboard API Endpoints
+app.get("/leaderboard/:quizId", leaderboardController.getLeaderboard);
+app.get("/leaderboard/:quizId/rank", leaderboardController.getUserRank);
 
 // TODO: cloud storageから画像を格納、取得するエンドポイントを追加する
 

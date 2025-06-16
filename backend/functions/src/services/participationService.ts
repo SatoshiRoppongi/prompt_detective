@@ -3,6 +3,7 @@
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {distance} from "fastest-levenshtein";
+import OpenAI from "openai";
 
 const db = admin.firestore();
 const quizzesCollection = db.collection("quizzes");
@@ -24,7 +25,8 @@ export const createParticipant = async (
   quizId: string,
   walletAddress: string,
   guessPrompt: string,
-  bet: number
+  bet: number,
+  submissionTime?: Date
 ): Promise<void> => {
   try {
     const quizDocRef = quizzesCollection.doc(quizId);
@@ -40,7 +42,7 @@ export const createParticipant = async (
 
       const quizData = quizDoc.data() as Quiz;
 
-      const participantScore = await calculateScore(guessPrompt, quizData.secretPrompt);
+      const participantScore = await calculateScore(guessPrompt, quizData.secretPrompt, quizData.createdAt, submissionTime);
       const newPot = quizData.pot + bet;
 
       const newTotalParticipants = quizData.totalParticipants + 1;
@@ -72,7 +74,12 @@ export const createParticipant = async (
   }
 };
 
-const calculateScore = async (guessPrompt: string, secretPrompt: string): Promise<number> => {
+const calculateScore = async (
+  guessPrompt: string, 
+  secretPrompt: string, 
+  quizStartTime?: any, 
+  submissionTime?: Date
+): Promise<number> => {
   // 入力の正規化
   const normalizeText = (text: string): string => {
     return text
@@ -120,5 +127,64 @@ const calculateScore = async (guessPrompt: string, secretPrompt: string): Promis
     score = Math.min(100, score + wordBonus);
   }
 
+  // 時間ボーナス計算
+  if (quizStartTime && submissionTime) {
+    const startTime = quizStartTime.toDate ? quizStartTime.toDate() : new Date(quizStartTime);
+    const timeDiffMinutes = (submissionTime.getTime() - startTime.getTime()) / (1000 * 60);
+    
+    // 早期回答ボーナス（最初の5分間で最大15点のボーナス）
+    if (timeDiffMinutes <= 5) {
+      const timeBonus = (5 - timeDiffMinutes) * 3; // 1分あたり3点
+      score = Math.min(100, score + timeBonus);
+      console.log(`Time bonus applied: ${timeBonus} points (submitted in ${timeDiffMinutes.toFixed(2)} minutes)`);
+    }
+  }
+
+  // AI類似度評価（オプション - OpenAI APIキーがある場合のみ）
+  if (process.env.OPENAI_API_KEY && process.env.USE_AI_SCORING === 'true') {
+    try {
+      const aiScore = await calculateAIScore(guessPrompt, secretPrompt);
+      // AIスコアと従来スコアの重み付け平均（AI: 70%, 従来: 30%）
+      score = (aiScore * 0.7) + (score * 0.3);
+      console.log(`AI scoring applied: AI=${aiScore}, Traditional=${score}, Final=${score}`);
+    } catch (error) {
+      console.error('AI scoring failed, using traditional scoring:', error);
+    }
+  }
+
   return Math.round(score * 100) / 100; // 小数点第2位まで
+};
+
+const calculateAIScore = async (guessPrompt: string, secretPrompt: string): Promise<number> => {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  const prompt = `
+Please evaluate the similarity between these two prompts for AI image generation.
+Rate the similarity from 0 to 100, where:
+- 100 = identical or nearly identical meaning
+- 80-99 = very similar concepts with minor differences
+- 60-79 = similar concepts with some differences
+- 40-59 = somewhat related but different focus
+- 20-39 = slightly related
+- 0-19 = completely different
+
+Original prompt: "${secretPrompt}"
+User guess: "${guessPrompt}"
+
+Respond with only a number between 0 and 100.
+`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 10,
+    temperature: 0.1,
+  });
+
+  const scoreText = response.choices[0]?.message?.content?.trim();
+  const score = parseFloat(scoreText || "0");
+  
+  return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
 };
