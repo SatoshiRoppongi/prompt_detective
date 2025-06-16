@@ -1,4 +1,5 @@
 [toolchain]
+solana_cli_version = "1.18.20"
 
 [features]
 resolution = true
