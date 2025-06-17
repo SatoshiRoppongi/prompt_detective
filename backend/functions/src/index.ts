@@ -4,16 +4,13 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import express from "express";
 import cors from "cors";
-import * as ServiceAccount from "./service_account.json";
 
 // TODO: ウォレットのキーを利用したauth(firebase authenticationwを利用？)を検討する
 // 検討内容：Beare tokenの変わりに、secret keyで検証する？
 
-
 // Firebase Admin SDKの初期化
-admin.initializeApp({
-  credential: admin.credential.cert(ServiceAccount as admin.ServiceAccount),
-});
+// Firebase Functions環境では自動的に認証される
+admin.initializeApp();
 
 const app = express();
 app.use(cors({origin: true}));
