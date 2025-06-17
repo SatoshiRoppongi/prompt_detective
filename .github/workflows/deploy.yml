@@ -32,7 +32,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
       - name: 🦀 Setup Rust
         uses: actions-rs/toolchain@v1
@@ -40,10 +39,26 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           override: true
 
+      - name: 📦 Cache Backend dependencies
+        uses: actions/cache@v3
+        with:
+          path: backend/functions/node_modules
+          key: ${{ runner.os }}-backend-${{ hashFiles('backend/functions/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-backend-
+
       - name: 📦 Install dependencies - Backend
         run: |
           cd backend/functions
           npm ci
+
+      - name: 📦 Cache Frontend dependencies
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-
 
       - name: 📦 Install dependencies - Frontend
         run: |
@@ -92,7 +107,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+
+      - name: 📦 Cache Backend dependencies
+        uses: actions/cache@v3
+        with:
+          path: backend/functions/node_modules
+          key: ${{ runner.os }}-backend-${{ hashFiles('backend/functions/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-backend-
 
       - name: 📦 Install dependencies
         run: |
@@ -154,7 +176,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+
+      - name: 📦 Cache Frontend dependencies
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-
 
       - name: 📦 Install dependencies
         run: |
