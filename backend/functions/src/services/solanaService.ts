@@ -9,18 +9,19 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
+import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 
 dotenv.config();
 
 // Solana接続設定
-const url = process.env.CLUSTER_URL || clusterApiUrl("devnet");
+const url = process.env.CLUSTER_URL || functions.config().solana?.cluster_url || clusterApiUrl("devnet");
 const connection = new Connection(url, "confirmed");
 
 // プログラムID
-const programId = process.env.PROGRAM_ID;
+const programId = process.env.PROGRAM_ID || functions.config().solana?.program_id;
 if (!programId) {
-  throw new Error("PROGRAM_IDが設定されていません。");
+  console.warn("PROGRAM_IDが設定されていません。Solana機能は無効化されます。");
 }
 
 // 秘密鍵の読み込み (開発・テスト環境でのみ使用)
@@ -47,6 +48,11 @@ export const initializeGame = async (
   maxParticipants = 100,
   durationHours = 24
 ): Promise<string> => {
+  if (!programId) {
+    console.warn("Solana functionality is disabled (PROGRAM_ID not configured). Game initialization skipped.");
+    return `mock-signature-init-${gameId}-${Date.now()}`;
+  }
+
   if (!payer) {
     console.warn("Solana functionality is disabled (no payer configured). Game initialization skipped.");
     return `mock-signature-init-${gameId}-${Date.now()}`;
@@ -93,6 +99,11 @@ export const initializeGame = async (
  * ゲームを終了
  */
 export const endGame = async (gameId: string): Promise<string> => {
+  if (!programId) {
+    console.warn("Solana functionality is disabled (PROGRAM_ID not configured). Game end skipped.");
+    return `mock-signature-end-${gameId}-${Date.now()}`;
+  }
+
   if (!payer) {
     console.warn("Solana functionality is disabled (no payer configured). Game end skipped.");
     return `mock-signature-end-${gameId}-${Date.now()}`;
@@ -132,6 +143,11 @@ export const distributeWinnings = async (
   winnerPubkey: string,
   winnerAmount: number
 ): Promise<string> => {
+  if (!programId) {
+    console.warn(`Solana functionality is disabled (PROGRAM_ID not configured). Winnings distribution skipped for ${winnerPubkey}: ${winnerAmount} lamports`);
+    return `mock-signature-distribute-${gameId}-${Date.now()}`;
+  }
+
   if (!payer) {
     console.warn(`Solana functionality is disabled (no payer configured). Winnings distribution skipped for ${winnerPubkey}: ${winnerAmount} lamports`);
     return `mock-signature-distribute-${gameId}-${Date.now()}`;
@@ -174,6 +190,17 @@ export const distributeWinnings = async (
  * ゲーム情報を取得
  */
 export const getGameInfo = async (gameId: string): Promise<any> => {
+  if (!programId) {
+    console.warn("Solana functionality is disabled (PROGRAM_ID not configured). Returning mock game info.");
+    return {
+      address: "mock-game-address",
+      data: Buffer.alloc(0),
+      lamports: 0,
+      gameId: gameId,
+      status: "mock",
+    };
+  }
+
   const programIdPubkey = new PublicKey(programId);
 
   const [gamePda] = PublicKey.findProgramAddressSync(

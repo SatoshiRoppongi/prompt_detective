@@ -9,6 +9,7 @@ import {
   Keypair,
 } from "@solana/web3.js";
 import {QuizResult, updateDistributionStatus} from "./resultCalculationService";
+import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -16,7 +17,7 @@ dotenv.config();
 const db = admin.firestore();
 
 // Solana connection setup
-const url = process.env.CLUSTER_URL || clusterApiUrl("devnet");
+const url = process.env.CLUSTER_URL || functions.config().solana?.cluster_url || clusterApiUrl("devnet");
 const connection = new Connection(url, "confirmed");
 
 // Get the treasury keypair from environment

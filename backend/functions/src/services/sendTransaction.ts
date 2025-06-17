@@ -2,17 +2,18 @@
 import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, VersionedTransaction, TransactionMessage} from "@solana/web3.js";
 import {serialize} from "borsh";
 import {Buffer} from "buffer";
+import * as functions from "firebase-functions";
 
 // Solana接続設定
 
-const url = process.env.CLUSTER_URL || clusterApiUrl("devnet");
+const url = process.env.CLUSTER_URL || functions.config().solana?.cluster_url || clusterApiUrl("devnet");
 const connection = new Connection(url, "confirmed");
 
 // プログラムID
-const programId = process.env.PROGRAM_ID;
+const programId = process.env.PROGRAM_ID || functions.config().solana?.program_id;
 
 if (!programId) {
-  throw new Error("PROGRAM_IDが設定されていません。");
+  console.warn("PROGRAM_IDが設定されていません。Solana機能は無効化されます。");
 }
 
 // 秘密鍵の読み込みとUint8Arrayへの変換
@@ -64,7 +65,11 @@ const SCHEMA = new Map([
 
 export const distributes = async (scores: Array<[string, number]>) => {
   if (!programId) {
-    console.warn("PROGRAM_IDが設定されていません。");
+    console.warn("Solana functionality is disabled (PROGRAM_ID not configured). Distribution skipped.");
+    console.log(`Mock distribution for ${scores.length} participants:`);
+    scores.forEach(([address, score], index) => {
+      console.log(`  ${index + 1}. ${address}: ${score} points`);
+    });
     return;
   }
 

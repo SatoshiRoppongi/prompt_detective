@@ -4,15 +4,16 @@
 // クライアントアプリやスケジュールトリガーからは呼ばれません
 
 import {Connection, PublicKey, clusterApiUrl, Transaction, TransactionInstruction, Keypair, SystemProgram, VersionedTransaction, TransactionMessage, sendAndConfirmTransaction, ComputeBudgetProgram} from "@solana/web3.js";
+import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 
 dotenv.config();
 
-const url = process.env.CLUSTER_URL || clusterApiUrl("devnet");
+const url = process.env.CLUSTER_URL || functions.config().solana?.cluster_url || clusterApiUrl("devnet");
 const connection = new Connection(url, "confirmed");
 
 // プログラムID
-const programId = process.env.PROGRAM_ID;
+const programId = process.env.PROGRAM_ID || functions.config().solana?.program_id;
 
 // 秘密鍵の読み込みとUint8Arrayへの変換
 let payer: Keypair | null = null;
@@ -32,6 +33,11 @@ if (secretKeyString) {
 }
 
 export const createQuizStateAccount = async () => {
+  if (!programId) {
+    console.warn("Solana functionality is disabled (PROGRAM_ID not configured). Quiz state account creation skipped.");
+    return new PublicKey("11111111111111111111111111111111"); // System Program ID as mock
+  }
+
   if (!payer) {
     console.warn("Solana functionality is disabled (no payer configured). Quiz state account creation skipped.");
     return new PublicKey("11111111111111111111111111111111"); // System Program ID as mock
@@ -46,10 +52,6 @@ export const createQuizStateAccount = async () => {
     // const accountSize = 4024;
     const accountSize = 424;
     const lamports = await connection.getMinimumBalanceForRentExemption(accountSize);
-
-    if (!programId) {
-      throw new Error("programId is not defined");
-    }
 
     const transaction = new Transaction().add(
       SystemProgram.createAccount({
@@ -92,6 +94,11 @@ export const createQuizStateAccount = async () => {
 async function initializeQuizState(
   quizStatePubkey: PublicKey,
 ) {
+  if (!programId) {
+    console.warn("Solana functionality is disabled (PROGRAM_ID not configured). Quiz state initialization skipped.");
+    return;
+  }
+
   if (!payer) {
     console.warn("Solana functionality is disabled (no payer configured). Quiz state initialization skipped.");
     return;
@@ -109,10 +116,6 @@ async function initializeQuizState(
     */
     const instructionData = Buffer.from([0]); // 命令の識別子（例: 0 = 初期化）
     // 必要に応じて追加のパラメータをここに含める
-
-    if (!programId) {
-      throw new Error("programId is not defined");
-    }
     const programIdPubKey = new PublicKey(programId);
 
     console.log("programId; ", programId);
