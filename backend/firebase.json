@@ -21,17 +21,17 @@
   ],
   "emulators": {
     "functions": {
-      "port": 5002
+      "port": 5001
     },
     "firestore": {
-      "port": 8081
+      "port": 8080
     },
     "ui": {
       "enabled": true,
-      "port": 4002
+      "port": 4000
     },
     "hub": {
-      "port": 4402
+      "port": 4400
     }
   }
 }
