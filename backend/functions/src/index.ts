@@ -82,6 +82,15 @@ app.post("/distributions/pending", distributionController.distributePendingPrize
 app.get("/treasury/stats", distributionController.getTreasuryStats);
 app.get("/distributions/health", distributionController.getDistributionHealth);
 
+// Health check endpoint
+app.get("/health", (_req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Game State API Endpoints
 app.get("/gamestate/:quizId", gameStateController.getGameState);
 app.post("/gamestate/:quizId/initialize", gameStateController.initializeGameState);

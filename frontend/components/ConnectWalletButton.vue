@@ -1,65 +1,105 @@
 <template>
-  <v-menu>
-    <template v-slot:activator="{ props }">
-      <v-btn @click="connectWallet" rounded="lg" size="x-large" v-bind="props">
-        <template v-if="walletAddress" v-slot:prepend>
-          {{ balance }} sol
-          <Identicon :value="walletAddress" :size="20" />
-        </template>
-        <template v-if="!walletAddress" v-slot:default>
-          Connect Wallet
-        </template>
-      </v-btn>
-    </template>
-    <v-list>
-      <v-list-item
-        v-for="(item, index) in items"
-        :key="index"
-        :value="index"
-        @click="handleClick(index, item)"
-      >
-        <v-list-item-title>{{ item.title }} </v-list-item-title>
-      </v-list-item>
-    </v-list>
-  </v-menu>
+  <div class="wallet-connection">
+    <v-btn
+      v-if="!walletAddress"
+      color="primary"
+      variant="outlined"
+      @click="handleConnectWallet"
+      :loading="isConnecting"
+      :disabled="isConnecting"
+      rounded="lg"
+      size="large"
+    >
+      <v-icon left>{{ mdiWallet }}</v-icon>
+      Connect Wallet
+    </v-btn>
+    
+    <v-menu v-else>
+      <template v-slot:activator="{ props }">
+        <v-btn
+          variant="outlined"
+          color="green"
+          rounded="lg" 
+          size="large"
+          v-bind="props"
+        >
+          <template v-slot:prepend>
+            <v-icon>{{ mdiCheckCircle }}</v-icon>
+          </template>
+          <span class="wallet-info">
+            {{ formatAddress(walletAddress) }} | {{ balance.toFixed(3) }} SOL
+          </span>
+        </v-btn>
+      </template>
+      
+      <v-list>
+        <v-list-item @click="handleDisconnectWallet">
+          <template v-slot:prepend>
+            <v-icon>{{ mdiLogout }}</v-icon>
+          </template>
+          <v-list-item-title>接続解除</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { useWallet } from "~/composables/useWallets";
+import { ref } from 'vue'
+import { useWallet } from '~/composables/useWallets'
+import { 
+  mdiWallet, 
+  mdiCheckCircle, 
+  mdiLogout 
+} from '@mdi/js'
 
-const { walletAddress, balance, connectWallet, disconnectWallet } = useWallet();
+const { walletAddress, balance, connectWallet, disconnectWallet } = useWallet()
 
-const items = ref([
-  { title: "click me" },
-  { title: "click me2" },
-  { title: "click me3" },
-  { key: "disconnect", title: "接続解除" },
-]);
+const isConnecting = ref(false)
+const isDisconnecting = ref(false)
 
-const handleClick = async (index: number, item: any) => {
-  const key = item.key;
-  switch (key) {
-    case "disconnect":
-      await disconnectWallet();
-      break;
-
-    default:
-      break;
+const handleConnectWallet = async () => {
+  isConnecting.value = true
+  try {
+    await connectWallet()
+  } catch (error) {
+    console.error('Connect wallet error:', error)
+  } finally {
+    isConnecting.value = false
   }
-};
+}
+
+const handleDisconnectWallet = async () => {
+  isDisconnecting.value = true
+  try {
+    await disconnectWallet()
+  } catch (error) {
+    console.error('Disconnect wallet error:', error)
+  } finally {
+    isDisconnecting.value = false
+  }
+}
+
+const formatAddress = (address: string) => {
+  if (!address) return ''
+  return `${address.slice(0, 4)}...${address.slice(-4)}`
+}
 </script>
 
 <style scoped>
-button {
-  padding: 10px 20px;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+.wallet-connection {
+  display: flex;
+  align-items: center;
 }
 
-button:hover {
-  background-color: #2563eb;
+.wallet-info {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .wallet-info {
+    font-size: 0.75rem;
+  }
 }
 </style>

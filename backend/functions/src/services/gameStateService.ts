@@ -48,6 +48,8 @@ export const initializeGameState = async (
   autoTransitions: boolean = true
 ): Promise<GameTimer> => {
   try {
+    console.log(`🔍 Checking existing game state for quiz: ${quizId}`);
+    
     // Check if game state already exists
     const existingTimer = await getGameTimer(quizId);
     if (existingTimer) {
@@ -55,6 +57,7 @@ export const initializeGameState = async (
       return existingTimer;
     }
 
+    console.log(`🆕 Creating new game state for quiz: ${quizId}`);
     const now = new Date();
     const endTime = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
     
@@ -69,12 +72,16 @@ export const initializeGameState = async (
       autoTransitions
     };
 
+    console.log(`💾 Saving game timer to Firestore...`);
     // Save initial state
     await saveGameTimer(gameTimer);
+    console.log(`✅ Game timer saved successfully`);
     
     // Initialize history only if it doesn't exist
+    console.log(`🔍 Checking existing game state history...`);
     const existingHistory = await getGameStateHistory(quizId);
     if (!existingHistory) {
+      console.log(`🆕 Creating new game state history...`);
       const history: GameStateHistory = {
         quizId,
         transitions: [],
@@ -84,12 +91,17 @@ export const initializeGameState = async (
       };
       
       await saveGameStateHistory(history);
+      console.log(`✅ Game state history saved successfully`);
+    } else {
+      console.log(`📋 Game state history already exists`);
     }
     
-    console.log(`🎮 Game state initialized for quiz: ${quizId}`);
+    console.log(`🎮 Game state initialized successfully for quiz: ${quizId}`);
     return gameTimer;
-  } catch (error) {
-    console.error(`Error initializing game state for quiz ${quizId}:`, error);
+  } catch (error: any) {
+    console.error(`❌ Error initializing game state for quiz ${quizId}:`, error);
+    console.error(`❌ Error details:`, error.message);
+    console.error(`❌ Error stack:`, error.stack);
     throw error;
   }
 };
@@ -275,9 +287,9 @@ const emitPhaseChangeEvent = async (quizId: string, from: GamePhase, to: GamePha
       data: {
         from,
         to,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
+        timestamp: new Date().toISOString()
       },
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: new Date().toISOString()
     });
 
     console.log(`📢 Phase change event emitted: ${from} → ${to} for quiz ${quizId}`);
@@ -292,12 +304,20 @@ const emitPhaseChangeEvent = async (quizId: string, from: GamePhase, to: GamePha
 const saveGameTimer = async (gameTimer: GameTimer): Promise<void> => {
   try {
     const timerRef = db.collection('game_timers').doc(gameTimer.quizId);
+    
+    console.log('💾 Saving game timer with ISO dates...');
+    console.log('startTime:', gameTimer.startTime.toISOString());
+    console.log('endTime:', gameTimer.endTime.toISOString());
+    
+    // Use ISO strings instead of Firestore Timestamps for compatibility
     await timerRef.set({
       ...gameTimer,
-      startTime: admin.firestore.Timestamp.fromDate(gameTimer.startTime),
-      endTime: admin.firestore.Timestamp.fromDate(gameTimer.endTime),
-      lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+      startTime: gameTimer.startTime.toISOString(),
+      endTime: gameTimer.endTime.toISOString(),
+      lastUpdated: new Date().toISOString()
     });
+    
+    console.log('✅ Game timer saved successfully with ISO dates');
   } catch (error) {
     console.error('Error saving game timer:', error);
     throw error;
@@ -317,13 +337,25 @@ export const getGameTimer = async (quizId: string): Promise<GameTimer | null> =>
     }
 
     const data = doc.data()!;
+    
+    // Handle both ISO string dates and Firestore Timestamps for compatibility
+    const parseDate = (dateValue: any): Date => {
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue);
+      } else if (dateValue && typeof dateValue.toDate === 'function') {
+        return dateValue.toDate();
+      } else {
+        return new Date(dateValue);
+      }
+    };
+    
     return {
       quizId: data.quizId,
       phase: data.phase,
-      startTime: data.startTime.toDate(),
-      endTime: data.endTime.toDate(),
+      startTime: parseDate(data.startTime),
+      endTime: parseDate(data.endTime),
       remainingTime: data.remainingTime,
-      lastUpdated: data.lastUpdated?.toDate() || new Date(),
+      lastUpdated: parseDate(data.lastUpdated) || new Date(),
       isActive: data.isActive,
       autoTransitions: data.autoTransitions
     };
@@ -339,11 +371,19 @@ export const getGameTimer = async (quizId: string): Promise<GameTimer | null> =>
 const recordPhaseTransition = async (quizId: string, transition: PhaseTransition): Promise<void> => {
   try {
     const historyRef = db.collection('game_state_history').doc(quizId);
-    await historyRef.update({
-      transitions: admin.firestore.FieldValue.arrayUnion({
+    // Get current document and append transition
+    const doc = await historyRef.get();
+    const currentTransitions = doc.exists ? (doc.data()?.transitions || []) : [];
+    
+    await historyRef.set({
+      quizId,
+      transitions: [...currentTransitions, {
         ...transition,
-        triggeredAt: admin.firestore.Timestamp.fromDate(transition.triggeredAt)
-      })
+        triggeredAt: transition.triggeredAt.toISOString()
+      }],
+      totalDuration: 0,
+      activePhaseDuration: 0,
+      createdAt: doc.exists ? doc.data()?.createdAt : new Date().toISOString()
     });
   } catch (error) {
     console.error('Error recording phase transition:', error);
@@ -358,7 +398,7 @@ const saveGameStateHistory = async (history: GameStateHistory): Promise<void> =>
     const historyRef = db.collection('game_state_history').doc(history.quizId);
     await historyRef.set({
       ...history,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
       transitions: []
     });
   } catch (error) {

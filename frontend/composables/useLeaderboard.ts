@@ -50,14 +50,14 @@ export const useLeaderboard = (quizId?: string, testActiveMode?: Ref<boolean>) =
   const topEntries = computed(() => {
     if (!leaderboardData.value) return []
     
-    // During active games, limit to top 5 by bet amount and sort by bet
+    // During active games, show top 5 sorted by bet amount only
     if (isGameActive.value) {
       const sortedByBet = [...leaderboardData.value.entries]
         .sort((a, b) => b.bet - a.bet)
       return sortedByBet.slice(0, 5)
     }
     
-    // During ended games, show normal top 10 ranking
+    // During ended games, show top 10 by final ranking (score-based)
     return leaderboardData.value.entries.filter(entry => entry.rank <= 10)
   })
   
@@ -67,14 +67,19 @@ export const useLeaderboard = (quizId?: string, testActiveMode?: Ref<boolean>) =
   })
   
   const shouldShowUserEntry = computed(() => {
-    if (!currentUserEntry.value || !isGameActive.value) return false
+    if (!currentUserEntry.value) return false
     
     // During active games, show user entry if not in top 5 by bet amount
-    const sortedByBet = [...(leaderboardData.value?.entries || [])]
-      .sort((a, b) => b.bet - a.bet)
-    const top5ByBet = sortedByBet.slice(0, 5)
+    if (isGameActive.value) {
+      const sortedByBet = [...(leaderboardData.value?.entries || [])]
+        .sort((a, b) => b.bet - a.bet)
+      const top5ByBet = sortedByBet.slice(0, 5)
+      
+      return !top5ByBet.find(entry => entry.isCurrentUser)
+    }
     
-    return !top5ByBet.find(entry => entry.isCurrentUser)
+    // During ended games, show user entry if not in top 10 by rank
+    return !isUserInTop10.value
   })
   
   const isUserInTop10 = computed(() => {
@@ -174,12 +179,12 @@ export const useLeaderboard = (quizId?: string, testActiveMode?: Ref<boolean>) =
   }
   
   const getRankBadgeColor = (rank: number) => {
-    // During active games, use neutral colors only
+    // During active games, use neutral colors to avoid suggesting ranking
     if (isGameActive.value) {
       return 'blue-grey lighten-2'
     }
     
-    // During ended games, use normal ranking colors
+    // During ended games, use distinctive ranking colors
     if (rank === 1) return 'amber'
     if (rank === 2) return 'grey lighten-1' 
     if (rank === 3) return 'brown lighten-2'

@@ -4,6 +4,17 @@
       <v-icon left>{{ mdiTrophy }}</v-icon>
       リーダーボード
       <v-spacer></v-spacer>
+      <!-- Debug: API Health Check -->
+      <v-btn 
+        icon 
+        small 
+        @click="testApiHealth"
+        color="blue"
+        title="Test API Health"
+      >
+        <v-icon>{{ mdiStethoscope }}</v-icon>
+      </v-btn>
+      
       <!-- Debug: Force active game state for testing -->
       <v-btn 
         icon 
@@ -60,13 +71,13 @@
     <!-- Leaderboard Content -->
     <v-card-text v-else-if="leaderboardData" class="pa-0">
       <v-list dense>
-        <!-- Top 10 -->
+        <!-- During active games: Top 5 by bet amount | During ended games: Top 10 by score -->
         <v-list-item
           v-for="entry in topEntries"
           :key="`top-${entry.walletAddress}`"
           :class="{
             'primary lighten-4': entry.isCurrentUser,
-            'elevation-2': entry.rank <= 3
+            'elevation-2': !isGameActive && entry.rank <= 3
           }"
         >
           <v-list-item-avatar>
@@ -80,7 +91,7 @@
                   {{ getBetRank(entry) }}
                 </span>
               </template>
-              <!-- During ended games, show ranking icons -->
+              <!-- During ended games, show final ranking with icons -->
               <template v-else>
                 <v-icon v-if="entry.rank === 1" color="white">
                   {{ mdiTrophy }}
@@ -112,12 +123,12 @@
             
             <v-list-item-subtitle>
               <div class="d-flex justify-space-between">
-                <!-- During active games, hide scores -->
+                <!-- During active games, show only bet amount and percentage -->
                 <template v-if="isGameActive">
                   <span>賭け金: {{ entry.bet }} SOL ({{ formatBetPercentage(entry.bet) }})</span>
                   <span>{{ formatTime(entry.submissionTime) }}</span>
                 </template>
-                <!-- During ended games, show full info -->
+                <!-- During ended games, show complete information -->
                 <template v-else>
                   <span>スコア: {{ formatScore(entry.score) }}点</span>
                   <span>賭け金: {{ entry.bet }} SOL</span>
@@ -144,7 +155,7 @@
                 </template>
                 <span>自分の回答を見る</span>
               </v-tooltip>
-              <!-- Placeholder for other users during active games -->
+              <!-- Hide prompt view for other users during active games -->
               <v-btn v-else icon small disabled>
                 <v-icon>{{ mdiEyeOff }}</v-icon>
               </v-btn>
@@ -201,10 +212,12 @@
               
               <v-list-item-subtitle>
                 <div class="d-flex justify-space-between">
+                  <!-- Show only bet info during active games -->
                   <template v-if="isGameActive">
                     <span>賭け金: {{ currentUserEntry.bet }} SOL ({{ formatBetPercentage(currentUserEntry.bet) }})</span>
                     <span>{{ formatTime(currentUserEntry.submissionTime) }}</span>
                   </template>
+                  <!-- Show complete info during ended games -->
                   <template v-else>
                     <span>スコア: {{ formatScore(currentUserEntry.score) }}点</span>
                     <span>賭け金: {{ currentUserEntry.bet }} SOL</span>
@@ -265,16 +278,16 @@
         ></v-textarea>
         
         <div class="mt-2">
-          <!-- During active games, hide score information -->
+          <!-- During active games, show only betting information -->
           <template v-if="isGameActive">
             <strong>賭け金:</strong> {{ selectedEntry.bet }} SOL ({{ formatBetPercentage(selectedEntry.bet) }})<br>
             <strong>ベット順位:</strong> {{ getBetRank(selectedEntry) }}位<br>
             <strong>投稿時刻:</strong> {{ formatTime(selectedEntry.submissionTime) }}
           </template>
-          <!-- During ended games, show full information -->
+          <!-- During ended games, show complete information -->
           <template v-else>
             <strong>スコア:</strong> {{ formatScore(selectedEntry.score) }}点<br>
-            <strong>順位:</strong> {{ selectedEntry.rank }}位<br>
+            <strong>最終順位:</strong> {{ selectedEntry.rank }}位<br>
             <strong>賭け金:</strong> {{ selectedEntry.bet }} SOL<br>
             <strong>投稿時刻:</strong> {{ formatTime(selectedEntry.submissionTime) }}
           </template>
@@ -300,7 +313,8 @@ import {
   mdiEye,
   mdiEyeOff,
   mdiCog,
-  mdiCheckCircle
+  mdiCheckCircle,
+  mdiStethoscope
 } from '@mdi/js'
 
 interface Props {
@@ -354,9 +368,91 @@ const refresh = async () => {
 }
 
 // Toggle test mode for simulating active game state
-const toggleTestMode = () => {
+const toggleTestMode = async () => {
+  if (!testActiveMode.value) {
+    // Before enabling test mode, try to initialize real game state
+    await tryInitializeGameState()
+  }
   testActiveMode.value = !testActiveMode.value
   console.log('Test active mode:', testActiveMode.value ? 'ON' : 'OFF')
+}
+
+// Test API health and connectivity
+const testApiHealth = async () => {
+  const api = useApi()
+  
+  console.log('🩺 Starting API Health Check...')
+  
+  // Test 1: Basic health endpoint
+  try {
+    const healthResponse = await api.get('/health')
+    console.log('✅ Health endpoint:', healthResponse)
+  } catch (healthError: any) {
+    console.error('❌ Health endpoint failed:', healthError.message)
+    console.log('📍 Expected URL: http://127.0.0.1:5001/prompt-detective-backend/us-central1/api/health')
+  }
+  
+  // Test 2: Current quiz ID
+  console.log('📋 Current quiz ID:', props.quizId)
+  
+  // Test 3: API base configuration
+  const config = useRuntimeConfig()
+  console.log('🔧 API Base Config:', config.public.apiBase)
+  
+  // Test 4: Try different endpoints
+  const testEndpoints = [
+    '/activeQuiz',
+    '/latestQuiz',
+    '/gamestate'
+  ]
+  
+  for (const endpoint of testEndpoints) {
+    try {
+      const response = await api.get(endpoint)
+      console.log(`✅ ${endpoint}:`, response)
+    } catch (error: any) {
+      console.log(`❌ ${endpoint}:`, error.message)
+    }
+  }
+}
+
+// Try to initialize game state with backend
+const tryInitializeGameState = async () => {
+  if (!props.quizId) return
+  
+  try {
+    const api = useApi()
+    
+    // First check if backend is reachable
+    try {
+      const healthCheck = await api.get('/health')
+      console.log('Backend health check:', healthCheck)
+    } catch (healthError) {
+      console.warn('Backend not reachable:', healthError)
+      return
+    }
+    
+    // Try to initialize game state
+    console.log('Attempting to initialize game state for quiz:', props.quizId)
+    const initResponse = await api.post(`/gamestate/${props.quizId}/initialize`, {
+      durationHours: 24,
+      autoTransitions: true
+    })
+    console.log('Game state initialization response:', initResponse)
+    
+    // Then transition to active state
+    const transitionResponse = await api.put(`/gamestate/${props.quizId}/transition`, {
+      phase: 'active',
+      reason: 'Manual activation for testing'
+    })
+    console.log('Game state transition response:', transitionResponse)
+    
+    // Refresh leaderboard to reflect new state
+    await refresh()
+    
+  } catch (error: any) {
+    console.log('Failed to initialize real game state, using test mode:', error.message)
+  }
 }
 
 const showPrompt = (entry: any) => {

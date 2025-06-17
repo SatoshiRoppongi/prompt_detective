@@ -100,12 +100,14 @@ export const useGameState = () => {
       
       if (response.success) {
         gameTimer.value = response.data
+        console.log('✅ Game state fetched successfully:', response.data)
       } else {
         throw new Error(response.error || 'Failed to fetch game state')
       }
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch game state'
-      console.error('Error fetching game state:', err)
+      console.warn('⚠️ Game state fetch failed:', err.message)
+      // Don't throw error to prevent breaking the app
     } finally {
       isLoading.value = false
     }

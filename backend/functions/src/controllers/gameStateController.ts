@@ -46,7 +46,7 @@ export const getGameState = async (req: Request, res: Response): Promise<void> =
 export const initializeGameState = async (req: Request, res: Response): Promise<void> => {
   try {
     const { quizId } = req.params;
-    const { durationHours, autoTransitions } = req.body;
+    const { durationHours = 24, autoTransitions = true } = req.body;
     
     if (!quizId) {
       res.status(400).json({
@@ -55,12 +55,17 @@ export const initializeGameState = async (req: Request, res: Response): Promise<
       });
       return;
     }
+
+    console.log(`🎮 Initializing game state for quiz: ${quizId}`);
+    console.log(`📋 Parameters: durationHours=${durationHours}, autoTransitions=${autoTransitions}`);
     
     const gameTimer = await gameStateService.initializeGameState(
       quizId,
-      durationHours || 24,
-      autoTransitions !== false
+      durationHours,
+      autoTransitions
     );
+    
+    console.log(`✅ Game state initialized successfully for quiz: ${quizId}`);
     
     res.json({
       success: true,
@@ -69,10 +74,13 @@ export const initializeGameState = async (req: Request, res: Response): Promise<
     });
     
   } catch (error: any) {
-    console.error('Error in initializeGameState:', error);
+    console.error('❌ Error in initializeGameState controller:', error);
+    console.error('❌ Error stack:', error.stack);
+    
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to initialize game state"
+      error: error.message || "Failed to initialize game state",
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
