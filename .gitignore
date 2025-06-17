@@ -60,6 +60,10 @@ blockchain/prompt_detective/target/
 # Testing files with credentials
 **/test_*.js
 
+# Documentation with potential credentials (review before commit)
+# GITHUB_SECRETS_SETUP.md
+# FIREBASE_TOKEN_SETUP.md
+
 # Frontend
 frontend/.nuxt/
 frontend/.output/
