@@ -13,7 +13,7 @@ export interface SecurityLog {
   walletAddress: string;
   action: string;
   details: any;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   ipAddress?: string;
   userAgent?: string;
   timestamp: any;
@@ -35,7 +35,7 @@ export interface Appeal {
   id: string;
   message: string;
   submittedAt: any;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   reviewedBy?: string;
   reviewedAt?: any;
   response?: string;
@@ -59,10 +59,10 @@ export interface AntiCheatResult {
 
 // Rate limiting configurations
 const RATE_LIMITS = {
-  quiz_participation: { maxAttempts: 5, windowMinutes: 60 },
-  answer_submission: { maxAttempts: 3, windowMinutes: 5 },
-  wallet_connection: { maxAttempts: 10, windowMinutes: 15 },
-  api_requests: { maxAttempts: 100, windowMinutes: 1 },
+  quiz_participation: {maxAttempts: 5, windowMinutes: 60},
+  answer_submission: {maxAttempts: 3, windowMinutes: 5},
+  wallet_connection: {maxAttempts: 10, windowMinutes: 15},
+  api_requests: {maxAttempts: 100, windowMinutes: 1},
 };
 
 // Security monitoring
@@ -70,19 +70,19 @@ export const logSecurityEvent = async (
   walletAddress: string,
   action: string,
   details: any,
-  severity: 'low' | 'medium' | 'high' | 'critical' = 'low',
+  severity: "low" | "medium" | "high" | "critical" = "low",
   ipAddress?: string,
   userAgent?: string
 ): Promise<void> => {
   try {
     // Clean up undefined values to avoid Firestore errors
-    const cleanDetails = details ? JSON.parse(JSON.stringify(details, (key, value) => 
+    const cleanDetails = details ? JSON.parse(JSON.stringify(details, (key, value) =>
       value === undefined ? null : value
     )) : {};
-    
+
     // Ensure required fields are never undefined
-    const safeIpAddress = ipAddress || 'unknown';
-    const safeUserAgent = userAgent || 'unknown';
+    const safeIpAddress = ipAddress || "unknown";
+    const safeUserAgent = userAgent || "unknown";
 
     const securityLog: SecurityLog = {
       walletAddress,
@@ -98,11 +98,11 @@ export const logSecurityEvent = async (
     await securityLogsCollection.add(securityLog);
 
     // Auto-escalate critical events
-    if (severity === 'critical') {
+    if (severity === "critical") {
       await handleCriticalSecurityEvent(walletAddress, action, details);
     }
   } catch (error) {
-    console.error('Error logging security event:', error);
+    console.error("Error logging security event:", error);
   }
 };
 
@@ -114,7 +114,7 @@ export const checkRateLimit = async (
   try {
     const config = RATE_LIMITS[action as keyof typeof RATE_LIMITS];
     if (!config) {
-      return { allowed: true, remainingAttempts: Infinity };
+      return {allowed: true, remainingAttempts: Infinity};
     }
 
     const rateLimitId = `${identifier}_${action}`;
@@ -122,7 +122,7 @@ export const checkRateLimit = async (
     const windowStart = new Date(now.getTime() - config.windowMinutes * 60 * 1000);
 
     const rateLimitDoc = await rateLimitCollection.doc(rateLimitId).get();
-    
+
     if (!rateLimitDoc.exists) {
       // First request in window
       await rateLimitCollection.doc(rateLimitId).set({
@@ -132,8 +132,8 @@ export const checkRateLimit = async (
         windowStart: new Date().toISOString(),
         blocked: false,
       });
-      
-      return { allowed: true, remainingAttempts: config.maxAttempts - 1 };
+
+      return {allowed: true, remainingAttempts: config.maxAttempts - 1};
     }
 
     const rateLimitData = rateLimitDoc.data() as RateLimit;
@@ -146,24 +146,24 @@ export const checkRateLimit = async (
         windowStart: new Date().toISOString(),
         blocked: false,
       });
-      
-      return { allowed: true, remainingAttempts: config.maxAttempts - 1 };
+
+      return {allowed: true, remainingAttempts: config.maxAttempts - 1};
     }
 
     if (rateLimitData.count >= config.maxAttempts) {
       // Rate limit exceeded
       const resetTime = new Date(windowStartTime.getTime() + config.windowMinutes * 60 * 1000);
-      
+
       await logSecurityEvent(
         identifier,
-        'rate_limit_exceeded',
-        { action, count: rateLimitData.count, limit: config.maxAttempts },
-        'medium',
-        'unknown', // ipAddress
-        'unknown'  // userAgent
+        "rate_limit_exceeded",
+        {action, count: rateLimitData.count, limit: config.maxAttempts},
+        "medium",
+        "unknown", // ipAddress
+        "unknown" // userAgent
       );
 
-      return { allowed: false, remainingAttempts: 0, resetTime };
+      return {allowed: false, remainingAttempts: 0, resetTime};
     }
 
     // Increment counter
@@ -171,10 +171,10 @@ export const checkRateLimit = async (
       count: admin.firestore.FieldValue.increment(1),
     });
 
-    return { allowed: true, remainingAttempts: config.maxAttempts - rateLimitData.count - 1 };
+    return {allowed: true, remainingAttempts: config.maxAttempts - rateLimitData.count - 1};
   } catch (error) {
-    console.error('Error checking rate limit:', error);
-    return { allowed: true, remainingAttempts: 0 };
+    console.error("Error checking rate limit:", error);
+    return {allowed: true, remainingAttempts: 0};
   }
 };
 
@@ -182,11 +182,11 @@ export const checkRateLimit = async (
 export const validateQuizSubmission = async (
   walletAddress: string,
   quizId: string,
-  submissionData: any
+  _submissionData: any
 ): Promise<AntiCheatResult> => {
   try {
     console.log(`🔍 Validating submission for ${walletAddress} in quiz ${quizId} - simplified mode`);
-    
+
     // Temporarily simplified validation to avoid complex database queries and errors
     const suspiciousActivities: string[] = [];
     const riskScore = 0;
@@ -196,40 +196,40 @@ export const validateQuizSubmission = async (
     // Log validation result with minimal data
     await logSecurityEvent(
       walletAddress,
-      'anti_cheat_validation',
+      "anti_cheat_validation",
       {
         quizId,
         riskScore,
         isValid,
-        mode: 'simplified'
+        mode: "simplified",
       },
-      'low',
-      'unknown', // ipAddress
-      'unknown'  // userAgent
+      "low",
+      "unknown", // ipAddress
+      "unknown" // userAgent
     );
 
     return {
       isValid,
       suspiciousActivities,
       riskScore,
-      recommendations
+      recommendations,
     };
   } catch (error: any) {
-    console.error('Error in anti-cheat validation:', error);
+    console.error("Error in anti-cheat validation:", error);
     await logSecurityEvent(
       walletAddress,
-      'anti_cheat_error',
-      { error: error?.toString() || 'Unknown error', quizId },
-      'high',
-      'unknown', // ipAddress
-      'unknown'  // userAgent
+      "anti_cheat_error",
+      {error: error?.toString() || "Unknown error", quizId},
+      "high",
+      "unknown", // ipAddress
+      "unknown" // userAgent
     );
-    
+
     return {
       isValid: false,
-      suspiciousActivities: ['システムエラー'],
+      suspiciousActivities: ["システムエラー"],
       riskScore: 100,
-      recommendations: ['手動レビューが必要'],
+      recommendations: ["手動レビューが必要"],
     };
   }
 };
@@ -239,7 +239,7 @@ export const banUser = async (
   walletAddress: string,
   reason: string,
   bannedBy: string,
-  permanent: boolean = false,
+  permanent = false,
   expirationHours?: number
 ): Promise<void> => {
   try {
@@ -262,46 +262,46 @@ export const banUser = async (
 
     await logSecurityEvent(
       walletAddress,
-      'user_banned',
-      { reason, bannedBy, permanent, expirationHours },
-      'high',
-      'unknown', // ipAddress
-      'unknown'  // userAgent
+      "user_banned",
+      {reason, bannedBy, permanent, expirationHours},
+      "high",
+      "unknown", // ipAddress
+      "unknown" // userAgent
     );
   } catch (error) {
-    console.error('Error banning user:', error);
-    throw new Error('Failed to ban user');
+    console.error("Error banning user:", error);
+    throw new Error("Failed to ban user");
   }
 };
 
 export const checkUserBanned = async (walletAddress: string): Promise<{ banned: boolean; reason?: string; expiresAt?: Date }> => {
   try {
     const bannedDoc = await bannedUsersCollection.doc(walletAddress).get();
-    
+
     if (!bannedDoc.exists) {
-      return { banned: false };
+      return {banned: false};
     }
 
     const bannedData = bannedDoc.data() as BannedUser;
-    
+
     // Check if temporary ban has expired
     if (!bannedData.permanent && bannedData.expiresAt) {
       const now = new Date();
       const expiresAt = new Date(bannedData.expiresAt);
-      
+
       if (now > expiresAt) {
         // Ban expired, remove it
         await bannedUsersCollection.doc(walletAddress).delete();
-        return { banned: false };
+        return {banned: false};
       }
-      
-      return { banned: true, reason: bannedData.reason, expiresAt };
+
+      return {banned: true, reason: bannedData.reason, expiresAt};
     }
 
-    return { banned: true, reason: bannedData.reason };
+    return {banned: true, reason: bannedData.reason};
   } catch (error) {
-    console.error('Error checking user ban status:', error);
-    return { banned: false };
+    console.error("Error checking user ban status:", error);
+    return {banned: false};
   }
 };
 
@@ -316,11 +316,11 @@ const handleCriticalSecurityEvent = async (
 ): Promise<void> => {
   try {
     // Auto-ban for critical security violations
-    if (action === 'wallet_signature_fraud' || action === 'multiple_duplicate_submissions') {
+    if (action === "wallet_signature_fraud" || action === "multiple_duplicate_submissions") {
       await banUser(
         walletAddress,
         `Automatic ban due to: ${action}`,
-        'system',
+        "system",
         false,
         24 // 24 hour ban
       );
@@ -329,7 +329,7 @@ const handleCriticalSecurityEvent = async (
     // TODO: Send alerts to administrators
     console.log(`CRITICAL SECURITY EVENT: ${action} for wallet ${walletAddress}`, details);
   } catch (error) {
-    console.error('Error handling critical security event:', error);
+    console.error("Error handling critical security event:", error);
   }
 };
 
@@ -338,12 +338,12 @@ const handleCriticalSecurityEvent = async (
 
 // Generate secure tokens
 export const generateSecureToken = (): string => {
-  return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(32).toString("hex");
 };
 
 // Hash sensitive data
 export const hashData = (data: string): string => {
-  return crypto.createHash('sha256').update(data).digest('hex');
+  return crypto.createHash("sha256").update(data).digest("hex");
 };
 
 // Security middleware functions
@@ -353,59 +353,61 @@ export const validateApiKey = (apiKey: string): boolean => {
 };
 
 export const sanitizeInput = (input: any): any => {
-  if (typeof input === 'string') {
-    return input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  if (typeof input === "string") {
+    return input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
   }
-  
-  if (typeof input === 'object' && input !== null) {
+
+  if (typeof input === "object" && input !== null) {
     const sanitized: any = {};
     for (const key in input) {
-      sanitized[key] = sanitizeInput(input[key]);
+      if (Object.prototype.hasOwnProperty.call(input, key)) {
+        sanitized[key] = sanitizeInput(input[key]);
+      }
     }
     return sanitized;
   }
-  
+
   return input;
 };
 
-export const getSecurityStats = async (timeframe: 'day' | 'week' | 'month' = 'week') => {
+export const getSecurityStats = async (timeframe: "day" | "week" | "month" = "week") => {
   try {
     const now = new Date();
     let startTime: Date;
 
     switch (timeframe) {
-      case 'day':
-        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case 'week':
-        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
+    case "day":
+      startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case "week":
+      startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "month":
+      startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
     }
 
     const [securityLogs, bannedUsers, rateLimits] = await Promise.all([
       securityLogsCollection
-        .where('timestamp', '>=', startTime.toISOString())
+        .where("timestamp", ">=", startTime.toISOString())
         .get(),
       bannedUsersCollection
-        .where('bannedAt', '>=', startTime.toISOString())
+        .where("bannedAt", ">=", startTime.toISOString())
         .get(),
       rateLimitCollection
-        .where('windowStart', '>=', startTime.toISOString())
-        .where('blocked', '==', true)
-        .get()
+        .where("windowStart", ">=", startTime.toISOString())
+        .where("blocked", "==", true)
+        .get(),
     ]);
 
     const logsBySeverity = {
       low: 0,
       medium: 0,
       high: 0,
-      critical: 0
+      critical: 0,
     };
 
-    securityLogs.docs.forEach(doc => {
+    securityLogs.docs.forEach((doc) => {
       const data = doc.data() as SecurityLog;
       logsBySeverity[data.severity]++;
     });
@@ -419,8 +421,8 @@ export const getSecurityStats = async (timeframe: 'day' | 'week' | 'month' = 'we
       activeBans: await getActiveBansCount(),
     };
   } catch (error) {
-    console.error('Error getting security stats:', error);
-    throw new Error('Failed to get security statistics');
+    console.error("Error getting security stats:", error);
+    throw new Error("Failed to get security statistics");
   }
 };
 
@@ -428,17 +430,17 @@ const getActiveBansCount = async (): Promise<number> => {
   try {
     const now = admin.firestore.Timestamp.now();
     const activeBans = await bannedUsersCollection
-      .where('permanent', '==', true)
+      .where("permanent", "==", true)
       .get();
-    
+
     const temporaryBans = await bannedUsersCollection
-      .where('permanent', '==', false)
-      .where('expiresAt', '>', now)
+      .where("permanent", "==", false)
+      .where("expiresAt", ">", now)
       .get();
 
     return activeBans.size + temporaryBans.size;
   } catch (error) {
-    console.error('Error getting active bans count:', error);
+    console.error("Error getting active bans count:", error);
     return 0;
   }
 };

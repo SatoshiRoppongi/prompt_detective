@@ -1,6 +1,14 @@
 import * as admin from "firebase-admin";
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, clusterApiUrl, Keypair } from "@solana/web3.js";
-import { QuizResult, updateDistributionStatus } from "./resultCalculationService";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  clusterApiUrl,
+  Keypair,
+} from "@solana/web3.js";
+import {QuizResult, updateDistributionStatus} from "./resultCalculationService";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -12,24 +20,30 @@ const url = process.env.CLUSTER_URL || clusterApiUrl("devnet");
 const connection = new Connection(url, "confirmed");
 
 // Get the treasury keypair from environment
+let treasuryKeypair: Keypair | null = null;
 const secretKeyString = process.env.SECRET_KEY;
-if (!secretKeyString) {
-  throw new Error("SECRET_KEY not configured");
+
+if (secretKeyString) {
+  const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
+  if (secretKeyArray.length === 64) {
+    treasuryKeypair = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
+  } else {
+    console.warn("SECRET_KEYの形式が正しくありません。Solana機能は無効化されます。");
+  }
+} else {
+  console.warn("SECRET_KEYが設定されていません。Solana機能は無効化されます。");
 }
 
-const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
-const treasuryKeypair = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
-
 // Platform settings
-const PLATFORM_WALLET = process.env.PLATFORM_WALLET || treasuryKeypair.publicKey.toString();
+const PLATFORM_WALLET = process.env.PLATFORM_WALLET || (treasuryKeypair ? treasuryKeypair.publicKey.toString() : "mock-platform-wallet");
 
 export interface DistributionTransaction {
   quizId: string;
   signature: string;
   recipient: string;
   amount: number;
-  type: 'prize' | 'platform_fee';
-  status: 'pending' | 'confirmed' | 'failed';
+  type: "prize" | "platform_fee";
+  status: "pending" | "confirmed" | "failed";
   createdAt: Date;
   confirmedAt?: Date;
   error?: string;
@@ -42,7 +56,7 @@ export interface DistributionSummary {
   platformFee: number;
   successfulTransactions: number;
   failedTransactions: number;
-  status: 'pending' | 'completed' | 'partial' | 'failed';
+  status: "pending" | "completed" | "partial" | "failed";
   createdAt: Date;
   completedAt?: Date;
 }
@@ -52,7 +66,28 @@ export interface DistributionSummary {
  */
 export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<DistributionSummary> => {
   console.log(`🎯 Starting prize distribution for quiz: ${quizResult.quizId}`);
-  
+
+  if (!treasuryKeypair) {
+    console.warn("Solana functionality is disabled (no treasury keypair configured). Prize distribution skipped.");
+    
+    // Return mock distribution summary
+    const mockSummary: DistributionSummary = {
+      quizId: quizResult.quizId,
+      totalDistributed: 0,
+      totalPrize: 0,
+      platformFee: 0,
+      successfulTransactions: 0,
+      failedTransactions: 0,
+      status: "completed",
+      createdAt: new Date(),
+      completedAt: new Date(),
+    };
+    
+    await saveDistributionSummary(mockSummary);
+    await updateDistributionStatus(quizResult.quizId, "distributed", "Mock distribution (Solana disabled)");
+    return mockSummary;
+  }
+
   try {
     // Create distribution summary
     const distributionSummary: DistributionSummary = {
@@ -62,13 +97,13 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
       platformFee: 0,
       successfulTransactions: 0,
       failedTransactions: 0,
-      status: 'pending',
-      createdAt: new Date()
+      status: "pending",
+      createdAt: new Date(),
     };
 
     // Save initial distribution summary
     await saveDistributionSummary(distributionSummary);
-    
+
     const transactions: DistributionTransaction[] = [];
     let totalSuccess = 0;
     let totalFailed = 0;
@@ -77,7 +112,7 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
     for (const winner of quizResult.winners) {
       try {
         const signature = await transferSOL(
-          winner.walletAddress, 
+          winner.walletAddress,
           winner.prize,
           `Prize for quiz ${quizResult.quizId}`
         );
@@ -87,9 +122,9 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
           signature,
           recipient: winner.walletAddress,
           amount: winner.prize,
-          type: 'prize',
-          status: 'pending',
-          createdAt: new Date()
+          type: "prize",
+          status: "pending",
+          createdAt: new Date(),
         };
 
         // Save transaction record
@@ -99,19 +134,18 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
         console.log(`✅ Prize transferred to ${winner.walletAddress}: ${winner.prize / LAMPORTS_PER_SOL} SOL`);
         totalSuccess++;
         distributionSummary.totalPrize += winner.prize;
-
       } catch (error) {
         console.error(`❌ Failed to transfer prize to ${winner.walletAddress}:`, error);
-        
+
         const failedTransaction: DistributionTransaction = {
           quizId: quizResult.quizId,
-          signature: '',
+          signature: "",
           recipient: winner.walletAddress,
           amount: winner.prize,
-          type: 'prize',
-          status: 'failed',
+          type: "prize",
+          status: "failed",
           createdAt: new Date(),
-          error: (error as Error).message
+          error: (error as Error).message,
         };
 
         await saveDistributionTransaction(failedTransaction);
@@ -121,7 +155,7 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
     }
 
     // Handle platform fee
-    const platformFeeDetail = quizResult.distributionDetails.find(d => d.type === 'platform_fee');
+    const platformFeeDetail = quizResult.distributionDetails.find((d) => d.type === "platform_fee");
     if (platformFeeDetail && platformFeeDetail.amount > 0) {
       try {
         const signature = await transferSOL(
@@ -135,9 +169,9 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
           signature,
           recipient: PLATFORM_WALLET,
           amount: platformFeeDetail.amount,
-          type: 'platform_fee',
-          status: 'pending',
-          createdAt: new Date()
+          type: "platform_fee",
+          status: "pending",
+          createdAt: new Date(),
         };
 
         await saveDistributionTransaction(feeTransaction);
@@ -147,7 +181,7 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
 
         console.log(`✅ Platform fee transferred: ${platformFeeDetail.amount / LAMPORTS_PER_SOL} SOL`);
       } catch (error) {
-        console.error(`❌ Failed to transfer platform fee:`, error);
+        console.error("❌ Failed to transfer platform fee:", error);
         totalFailed++;
       }
     }
@@ -156,29 +190,28 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
     distributionSummary.totalDistributed = distributionSummary.totalPrize + distributionSummary.platformFee;
     distributionSummary.successfulTransactions = totalSuccess;
     distributionSummary.failedTransactions = totalFailed;
-    distributionSummary.status = totalFailed === 0 ? 'completed' : totalSuccess > 0 ? 'partial' : 'failed';
+    distributionSummary.status = totalFailed === 0 ? "completed" : totalSuccess > 0 ? "partial" : "failed";
     distributionSummary.completedAt = new Date();
 
     await saveDistributionSummary(distributionSummary);
 
     // Update quiz result status
     if (totalFailed === 0) {
-      await updateDistributionStatus(quizResult.quizId, 'distributed');
+      await updateDistributionStatus(quizResult.quizId, "distributed");
     } else {
-      await updateDistributionStatus(quizResult.quizId, 'failed', 
+      await updateDistributionStatus(quizResult.quizId, "failed",
         `${totalFailed} transactions failed out of ${totalSuccess + totalFailed}`);
     }
 
     console.log(`🎉 Distribution completed for quiz ${quizResult.quizId}: ${totalSuccess} success, ${totalFailed} failed`);
-    
+
     // Start transaction confirmation monitoring
     monitorTransactionConfirmations(transactions);
 
     return distributionSummary;
-
   } catch (error) {
-    console.error('Error in prize distribution:', error);
-    await updateDistributionStatus(quizResult.quizId, 'failed', `Distribution error: ${error}`);
+    console.error("Error in prize distribution:", error);
+    await updateDistributionStatus(quizResult.quizId, "failed", `Distribution error: ${error}`);
     throw error;
   }
 };
@@ -187,13 +220,17 @@ export const distributeQuizPrizes = async (quizResult: QuizResult): Promise<Dist
  * SOL転送を実行
  */
 const transferSOL = async (
-  recipientAddress: string, 
-  lamports: number, 
+  recipientAddress: string,
+  lamports: number,
   memo?: string
 ): Promise<string> => {
+  if (!treasuryKeypair) {
+    throw new Error("Treasury keypair not configured");
+  }
+  
   try {
     const recipient = new PublicKey(recipientAddress);
-    
+
     // Check treasury balance
     const balance = await connection.getBalance(treasuryKeypair.publicKey);
     if (balance < lamports) {
@@ -222,14 +259,13 @@ const transferSOL = async (
     // Sign and send transaction
     const signature = await connection.sendTransaction(transaction, [treasuryKeypair], {
       skipPreflight: false,
-      preflightCommitment: 'confirmed'
+      preflightCommitment: "confirmed",
     });
 
     console.log(`Transaction sent: ${signature}`);
     return signature;
-
   } catch (error) {
-    console.error('Error in SOL transfer:', error);
+    console.error("Error in SOL transfer:", error);
     throw error;
   }
 };
@@ -239,29 +275,28 @@ const transferSOL = async (
  */
 const monitorTransactionConfirmations = async (transactions: DistributionTransaction[]) => {
   console.log(`📊 Monitoring ${transactions.length} transactions for confirmation`);
-  
+
   for (const transaction of transactions) {
-    if (transaction.signature && transaction.status === 'pending') {
+    if (transaction.signature && transaction.status === "pending") {
       try {
         // Wait for confirmation (max 30 seconds)
-        const confirmation = await connection.confirmTransaction(transaction.signature, 'confirmed');
-        
+        const confirmation = await connection.confirmTransaction(transaction.signature, "confirmed");
+
         if (confirmation.value.err) {
-          transaction.status = 'failed';
+          transaction.status = "failed";
           transaction.error = `Transaction failed: ${confirmation.value.err}`;
           console.error(`❌ Transaction failed: ${transaction.signature}`);
         } else {
-          transaction.status = 'confirmed';
+          transaction.status = "confirmed";
           transaction.confirmedAt = new Date();
           console.log(`✅ Transaction confirmed: ${transaction.signature}`);
         }
 
         // Update transaction status in Firestore
         await updateDistributionTransaction(transaction);
-
       } catch (error) {
         console.error(`❌ Error confirming transaction ${transaction.signature}:`, error);
-        transaction.status = 'failed';
+        transaction.status = "failed";
         transaction.error = `Confirmation error: ${error}`;
         await updateDistributionTransaction(transaction);
       }
@@ -274,14 +309,14 @@ const monitorTransactionConfirmations = async (transactions: DistributionTransac
  */
 const saveDistributionSummary = async (summary: DistributionSummary): Promise<void> => {
   try {
-    const summaryRef = db.collection('distribution_summaries').doc(summary.quizId);
+    const summaryRef = db.collection("distribution_summaries").doc(summary.quizId);
     await summaryRef.set({
       ...summary,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      completedAt: summary.completedAt ? admin.firestore.FieldValue.serverTimestamp() : null
+      completedAt: summary.completedAt ? admin.firestore.FieldValue.serverTimestamp() : null,
     });
   } catch (error) {
-    console.error('Error saving distribution summary:', error);
+    console.error("Error saving distribution summary:", error);
     throw error;
   }
 };
@@ -291,14 +326,14 @@ const saveDistributionSummary = async (summary: DistributionSummary): Promise<vo
  */
 const saveDistributionTransaction = async (transaction: DistributionTransaction): Promise<void> => {
   try {
-    const transactionRef = db.collection('distribution_transactions').doc();
+    const transactionRef = db.collection("distribution_transactions").doc();
     await transactionRef.set({
       ...transaction,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      confirmedAt: transaction.confirmedAt ? admin.firestore.FieldValue.serverTimestamp() : null
+      confirmedAt: transaction.confirmedAt ? admin.firestore.FieldValue.serverTimestamp() : null,
     });
   } catch (error) {
-    console.error('Error saving distribution transaction:', error);
+    console.error("Error saving distribution transaction:", error);
     throw error;
   }
 };
@@ -308,9 +343,9 @@ const saveDistributionTransaction = async (transaction: DistributionTransaction)
  */
 const updateDistributionTransaction = async (transaction: DistributionTransaction): Promise<void> => {
   try {
-    const querySnapshot = await db.collection('distribution_transactions')
-      .where('quizId', '==', transaction.quizId)
-      .where('signature', '==', transaction.signature)
+    const querySnapshot = await db.collection("distribution_transactions")
+      .where("quizId", "==", transaction.quizId)
+      .where("signature", "==", transaction.signature)
       .limit(1)
       .get();
 
@@ -319,11 +354,11 @@ const updateDistributionTransaction = async (transaction: DistributionTransactio
       await doc.ref.update({
         status: transaction.status,
         error: transaction.error || null,
-        confirmedAt: transaction.confirmedAt ? admin.firestore.FieldValue.serverTimestamp() : null
+        confirmedAt: transaction.confirmedAt ? admin.firestore.FieldValue.serverTimestamp() : null,
       });
     }
   } catch (error) {
-    console.error('Error updating distribution transaction:', error);
+    console.error("Error updating distribution transaction:", error);
   }
 };
 
@@ -332,44 +367,43 @@ const updateDistributionTransaction = async (transaction: DistributionTransactio
  */
 export const getDistributionHistory = async (
   quizId?: string,
-  limit: number = 50
+  limit = 50
 ): Promise<{ summaries: DistributionSummary[], transactions: DistributionTransaction[] }> => {
   try {
-    let summariesQuery = db.collection('distribution_summaries')
-      .orderBy('createdAt', 'desc')
+    let summariesQuery = db.collection("distribution_summaries")
+      .orderBy("createdAt", "desc")
       .limit(limit);
 
-    let transactionsQuery = db.collection('distribution_transactions')
-      .orderBy('createdAt', 'desc')
+    let transactionsQuery = db.collection("distribution_transactions")
+      .orderBy("createdAt", "desc")
       .limit(limit * 5); // More transactions than summaries
 
     if (quizId) {
-      summariesQuery = summariesQuery.where('quizId', '==', quizId);
-      transactionsQuery = transactionsQuery.where('quizId', '==', quizId);
+      summariesQuery = summariesQuery.where("quizId", "==", quizId);
+      transactionsQuery = transactionsQuery.where("quizId", "==", quizId);
     }
 
     const [summariesSnapshot, transactionsSnapshot] = await Promise.all([
       summariesQuery.get(),
-      transactionsQuery.get()
+      transactionsQuery.get(),
     ]);
 
-    const summaries = summariesSnapshot.docs.map(doc => ({
+    const summaries = summariesSnapshot.docs.map((doc) => ({
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
-      completedAt: doc.data().completedAt?.toDate()
+      completedAt: doc.data().completedAt?.toDate(),
     } as DistributionSummary));
 
-    const transactions = transactionsSnapshot.docs.map(doc => ({
+    const transactions = transactionsSnapshot.docs.map((doc) => ({
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
-      confirmedAt: doc.data().confirmedAt?.toDate()
+      confirmedAt: doc.data().confirmedAt?.toDate(),
     } as DistributionTransaction));
 
-    return { summaries, transactions };
-
+    return {summaries, transactions};
   } catch (error) {
-    console.error('Error getting distribution history:', error);
-    return { summaries: [], transactions: [] };
+    console.error("Error getting distribution history:", error);
+    return {summaries: [], transactions: []};
   }
 };
 
@@ -384,31 +418,30 @@ export const getTreasuryStats = async (): Promise<{
 }> => {
   try {
     // Get current treasury balance
-    const currentBalance = await connection.getBalance(treasuryKeypair.publicKey);
+    const currentBalance = treasuryKeypair ? await connection.getBalance(treasuryKeypair.publicKey) : 0;
 
     // Get distribution statistics
-    const { summaries } = await getDistributionHistory(undefined, 100);
-    
+    const {summaries} = await getDistributionHistory(undefined, 100);
+
     const totalDistributed = summaries.reduce((sum, s) => sum + s.totalPrize, 0);
     const totalFees = summaries.reduce((sum, s) => sum + s.platformFee, 0);
     const pendingDistributions = summaries
-      .filter(s => s.status === 'pending' || s.status === 'partial')
+      .filter((s) => s.status === "pending" || s.status === "partial")
       .reduce((sum, s) => sum + s.totalDistributed, 0);
 
     return {
       currentBalance,
       totalDistributed,
       totalFees,
-      pendingDistributions
+      pendingDistributions,
     };
-
   } catch (error) {
-    console.error('Error getting treasury stats:', error);
+    console.error("Error getting treasury stats:", error);
     return {
       currentBalance: 0,
       totalDistributed: 0,
       totalFees: 0,
-      pendingDistributions: 0
+      pendingDistributions: 0,
     };
   }
 };

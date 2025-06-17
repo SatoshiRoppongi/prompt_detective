@@ -76,9 +76,9 @@ export const createParticipant = async (
 };
 
 const calculateScore = async (
-  guessPrompt: string, 
-  secretPrompt: string, 
-  quizStartTime?: any, 
+  guessPrompt: string,
+  secretPrompt: string,
+  quizStartTime?: any,
   submissionTime?: Date
 ): Promise<number> => {
   // 入力の正規化
@@ -110,13 +110,13 @@ const calculateScore = async (
   let score = (1 - levenshteinDistance / maxLength) * 100;
 
   // 単語単位での一致率もチェック（ボーナススコア）
-  const guessWords = normalizedGuess.split(" ").filter(word => word.length > 0);
-  const secretWords = normalizedSecret.split(" ").filter(word => word.length > 0);
-  
+  const guessWords = normalizedGuess.split(" ").filter((word) => word.length > 0);
+  const secretWords = normalizedSecret.split(" ").filter((word) => word.length > 0);
+
   if (guessWords.length > 0 && secretWords.length > 0) {
     let wordMatches = 0;
     for (const guessWord of guessWords) {
-      if (secretWords.some(secretWord => 
+      if (secretWords.some((secretWord) =>
         secretWord.includes(guessWord) || guessWord.includes(secretWord)
       )) {
         wordMatches++;
@@ -132,7 +132,7 @@ const calculateScore = async (
   if (quizStartTime && submissionTime) {
     const startTime = quizStartTime.toDate ? quizStartTime.toDate() : new Date(quizStartTime);
     const timeDiffMinutes = (submissionTime.getTime() - startTime.getTime()) / (1000 * 60);
-    
+
     // 早期回答ボーナス（最初の5分間で最大15点のボーナス）
     if (timeDiffMinutes <= 5) {
       const timeBonus = (5 - timeDiffMinutes) * 3; // 1分あたり3点
@@ -142,14 +142,14 @@ const calculateScore = async (
   }
 
   // AI類似度評価（オプション - OpenAI APIキーがある場合のみ）
-  if (process.env.OPENAI_API_KEY && process.env.USE_AI_SCORING === 'true') {
+  if (process.env.OPENAI_API_KEY && process.env.USE_AI_SCORING === "true") {
     try {
       const aiScore = await calculateAIScore(guessPrompt, secretPrompt);
       // AIスコアと従来スコアの重み付け平均（AI: 70%, 従来: 30%）
       score = (aiScore * 0.7) + (score * 0.3);
       console.log(`AI scoring applied: AI=${aiScore}, Traditional=${score}, Final=${score}`);
     } catch (error) {
-      console.error('AI scoring failed, using traditional scoring:', error);
+      console.error("AI scoring failed, using traditional scoring:", error);
     }
   }
 
@@ -179,13 +179,13 @@ Respond with only a number between 0 and 100.
 
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
-    messages: [{ role: "user", content: prompt }],
+    messages: [{role: "user", content: prompt}],
     max_tokens: 10,
     temperature: 0.1,
   });
 
   const scoreText = response.choices[0]?.message?.content?.trim();
   const score = parseFloat(scoreText || "0");
-  
+
   return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
 };

@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import {Request, Response} from "express";
 import * as distributionService from "../services/distributionService";
 import * as resultService from "../services/resultCalculationService";
 
@@ -7,12 +7,12 @@ import * as resultService from "../services/resultCalculationService";
  */
 export const getDistributionHistory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    const { limit } = req.query;
-    
+    const {quizId} = req.params;
+    const {limit} = req.query;
+
     const limitNum = limit ? parseInt(limit as string) : 50;
-    const { summaries, transactions } = await distributionService.getDistributionHistory(quizId, limitNum);
-    
+    const {summaries, transactions} = await distributionService.getDistributionHistory(quizId, limitNum);
+
     res.json({
       success: true,
       data: {
@@ -20,16 +20,15 @@ export const getDistributionHistory = async (req: Request, res: Response): Promi
         transactions,
         count: {
           summaries: summaries.length,
-          transactions: transactions.length
-        }
-      }
+          transactions: transactions.length,
+        },
+      },
     });
-    
   } catch (error: any) {
-    console.error('Error in getDistributionHistory:', error);
+    console.error("Error in getDistributionHistory:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get distribution history"
+      error: error.message || "Failed to get distribution history",
     });
   }
 };
@@ -39,11 +38,11 @@ export const getDistributionHistory = async (req: Request, res: Response): Promi
  */
 export const getAllDistributionHistory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { limit } = req.query;
-    
+    const {limit} = req.query;
+
     const limitNum = limit ? parseInt(limit as string) : 50;
-    const { summaries, transactions } = await distributionService.getDistributionHistory(undefined, limitNum);
-    
+    const {summaries, transactions} = await distributionService.getDistributionHistory(undefined, limitNum);
+
     res.json({
       success: true,
       data: {
@@ -51,16 +50,15 @@ export const getAllDistributionHistory = async (req: Request, res: Response): Pr
         transactions,
         count: {
           summaries: summaries.length,
-          transactions: transactions.length
-        }
-      }
+          transactions: transactions.length,
+        },
+      },
     });
-    
   } catch (error: any) {
-    console.error('Error in getAllDistributionHistory:', error);
+    console.error("Error in getAllDistributionHistory:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get distribution history"
+      error: error.message || "Failed to get distribution history",
     });
   }
 };
@@ -70,49 +68,48 @@ export const getAllDistributionHistory = async (req: Request, res: Response): Pr
  */
 export const manualDistribution = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    
+    const {quizId} = req.params;
+
     if (!quizId) {
       res.status(400).json({
         success: false,
-        error: "Quiz ID is required"
+        error: "Quiz ID is required",
       });
       return;
     }
-    
+
     // Get quiz result
     const quizResult = await resultService.getQuizResult(quizId);
-    
+
     if (!quizResult) {
       res.status(404).json({
         success: false,
-        error: "Quiz result not found"
+        error: "Quiz result not found",
       });
       return;
     }
-    
-    if (quizResult.status === 'distributed') {
+
+    if (quizResult.status === "distributed") {
       res.status(400).json({
         success: false,
-        error: "Prizes have already been distributed for this quiz"
+        error: "Prizes have already been distributed for this quiz",
       });
       return;
     }
-    
+
     // Execute distribution
     const distributionSummary = await distributionService.distributeQuizPrizes(quizResult);
-    
+
     res.json({
       success: true,
       message: "Prize distribution initiated",
-      data: distributionSummary
+      data: distributionSummary,
     });
-    
   } catch (error: any) {
-    console.error('Error in manualDistribution:', error);
+    console.error("Error in manualDistribution:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to execute distribution"
+      error: error.message || "Failed to execute distribution",
     });
   }
 };
@@ -123,17 +120,16 @@ export const manualDistribution = async (req: Request, res: Response): Promise<v
 export const getTreasuryStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const stats = await distributionService.getTreasuryStats();
-    
+
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
-    
   } catch (error: any) {
-    console.error('Error in getTreasuryStats:', error);
+    console.error("Error in getTreasuryStats:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get treasury statistics"
+      error: error.message || "Failed to get treasury statistics",
     });
   }
 };
@@ -144,41 +140,40 @@ export const getTreasuryStats = async (req: Request, res: Response): Promise<voi
 export const getDistributionHealth = async (req: Request, res: Response): Promise<void> => {
   try {
     // Get recent distribution summaries to check system health
-    const { summaries } = await distributionService.getDistributionHistory(undefined, 10);
-    
-    const recentSummaries = summaries.filter(s => {
+    const {summaries} = await distributionService.getDistributionHistory(undefined, 10);
+
+    const recentSummaries = summaries.filter((s) => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       return s.createdAt > oneDayAgo;
     });
-    
+
     const totalRecent = recentSummaries.length;
-    const successfulRecent = recentSummaries.filter(s => s.status === 'completed').length;
-    const failedRecent = recentSummaries.filter(s => s.status === 'failed').length;
-    const pendingRecent = recentSummaries.filter(s => s.status === 'pending' || s.status === 'partial').length;
-    
+    const successfulRecent = recentSummaries.filter((s) => s.status === "completed").length;
+    const failedRecent = recentSummaries.filter((s) => s.status === "failed").length;
+    const pendingRecent = recentSummaries.filter((s) => s.status === "pending" || s.status === "partial").length;
+
     const healthStatus = {
-      status: failedRecent === 0 && pendingRecent === 0 ? 'healthy' : 
-              failedRecent > successfulRecent ? 'unhealthy' : 'warning',
+      status: failedRecent === 0 && pendingRecent === 0 ? "healthy" :
+        failedRecent > successfulRecent ? "unhealthy" : "warning",
       last24Hours: {
         total: totalRecent,
         successful: successfulRecent,
         failed: failedRecent,
         pending: pendingRecent,
-        successRate: totalRecent > 0 ? (successfulRecent / totalRecent) * 100 : 0
+        successRate: totalRecent > 0 ? (successfulRecent / totalRecent) * 100 : 0,
       },
-      lastDistribution: summaries.length > 0 ? summaries[0] : null
+      lastDistribution: summaries.length > 0 ? summaries[0] : null,
     };
-    
+
     res.json({
       success: true,
-      data: healthStatus
+      data: healthStatus,
     });
-    
   } catch (error: any) {
-    console.error('Error in getDistributionHealth:', error);
+    console.error("Error in getDistributionHealth:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get distribution health"
+      error: error.message || "Failed to get distribution health",
     });
   }
 };
@@ -189,9 +184,9 @@ export const getDistributionHealth = async (req: Request, res: Response): Promis
 export const distributePendingPrizes = async (req: Request, res: Response): Promise<void> => {
   try {
     // Get quiz results that are calculated but not distributed
-    const { results } = await resultService.getQuizResultHistory(50);
-    const pendingResults = results.filter(r => r.status === 'calculated' && r.winners.length > 0);
-    
+    const {results} = await resultService.getQuizResultHistory(50);
+    const pendingResults = results.filter((r) => r.status === "calculated" && r.winners.length > 0);
+
     if (pendingResults.length === 0) {
       res.json({
         success: true,
@@ -199,26 +194,26 @@ export const distributePendingPrizes = async (req: Request, res: Response): Prom
         data: {
           processed: 0,
           successful: 0,
-          failed: 0
-        }
+          failed: 0,
+        },
       });
       return;
     }
-    
+
     const distributionResults = [];
     let successful = 0;
     let failed = 0;
-    
+
     for (const result of pendingResults) {
       try {
         const distributionSummary = await distributionService.distributeQuizPrizes(result);
         distributionResults.push({
           quizId: result.quizId,
           status: distributionSummary.status,
-          summary: distributionSummary
+          summary: distributionSummary,
         });
-        
-        if (distributionSummary.status === 'completed') {
+
+        if (distributionSummary.status === "completed") {
           successful++;
         } else {
           failed++;
@@ -227,13 +222,13 @@ export const distributePendingPrizes = async (req: Request, res: Response): Prom
         console.error(`Failed to distribute prizes for quiz ${result.quizId}:`, error);
         distributionResults.push({
           quizId: result.quizId,
-          status: 'failed',
-          error: (error as Error).message
+          status: "failed",
+          error: (error as Error).message,
         });
         failed++;
       }
     }
-    
+
     res.json({
       success: true,
       message: `Processed ${pendingResults.length} pending distributions`,
@@ -241,15 +236,14 @@ export const distributePendingPrizes = async (req: Request, res: Response): Prom
         processed: pendingResults.length,
         successful,
         failed,
-        results: distributionResults
-      }
+        results: distributionResults,
+      },
     });
-    
   } catch (error: any) {
-    console.error('Error in distributePendingPrizes:', error);
+    console.error("Error in distributePendingPrizes:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to distribute pending prizes"
+      error: error.message || "Failed to distribute pending prizes",
     });
   }
 };

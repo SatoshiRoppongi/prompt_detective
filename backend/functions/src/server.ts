@@ -4,7 +4,7 @@ import * as admin from "firebase-admin";
 import express from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
-import { createServer } from "http";
+import {createServer} from "http";
 
 // Load environment variables
 dotenv.config();
@@ -65,7 +65,7 @@ app.get("/health", (_req, res) => {
   res.json({status: "OK", timestamp: new Date().toISOString()});
 });
 
-// Admin endpoints 
+// Admin endpoints
 app.get("/admin/status", requireAdmin, adminController.getSystemStatus);
 app.get("/admin/games", requireAdmin, adminController.getActiveGames);
 app.get("/admin/games/:gameId", requireAdmin, adminController.getGameDetails);
@@ -87,21 +87,21 @@ app.put("/admin/endGame/:gameId", validateGameId, quizController.endGame);
 // Solana test endpoint
 app.get("/test-solana", async (_req, res) => {
   try {
-    const {getGameInfo} = require("./services/solanaService");
+    const {getGameInfo} = await import("./services/solanaService");
     const testGameId = "test-game-123";
-    
+
     const gameInfo = await getGameInfo(testGameId);
     res.json({
       message: "Solana service test",
       gameId: testGameId,
       gameInfo: gameInfo,
-      status: "OK"
+      status: "OK",
     });
   } catch (error: any) {
     res.status(500).json({
-      message: "Solana service test failed", 
+      message: "Solana service test failed",
       error: error.message,
-      status: "ERROR"
+      status: "ERROR",
     });
   }
 });
@@ -119,7 +119,7 @@ server.listen(PORT, () => {
   console.log(`🚀 Development server running at http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🎮 Active quiz: http://localhost:${PORT}/activeQuiz`);
-  console.log(`⚡ WebSocket server initialized for real-time updates`);
+  console.log("⚡ WebSocket server initialized for real-time updates");
 });
 
 export default app;

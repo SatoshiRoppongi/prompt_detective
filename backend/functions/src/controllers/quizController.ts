@@ -24,7 +24,7 @@ export const getLatestQuiz = async (req: Request, res: Response) => {
     // TODO:過去分は見れるようにする
     if (retObj.participants) {
       retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
-        const {score, guessPrompt, ...rest} = participant;
+        const {score: _, guessPrompt, ...rest} = participant;
         return rest;
       });
     }
@@ -39,7 +39,7 @@ export const getActiveQuiz = async (req: Request, res: Response) => {
   console.log("getActiveQuiz");
   try {
     const quiz = await quizService.getActiveQuiz();
-    
+
     if (!quiz) {
       res.status(404).json({error: "No active game found"});
       return;
@@ -50,15 +50,15 @@ export const getActiveQuiz = async (req: Request, res: Response) => {
     const retObj = Object.fromEntries(
       Object.entries(quiz).filter(([key]) => !excludeKeys.includes(key))
     );
-    
+
     // Filter participant scores and guesses for active games
     if (retObj.participants) {
       retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
-        const {score, guessPrompt, ...rest} = participant;
+        const {score: _, guessPrompt, ...rest} = participant;
         return rest;
       });
     }
-    
+
     res.status(200).json(retObj);
   } catch (error: any) {
     res.status(500).send({error: error.message});
@@ -68,10 +68,10 @@ export const getActiveQuiz = async (req: Request, res: Response) => {
 export const getQuizById = async (req: Request, res: Response) => {
   const {gameId} = req.params;
   console.log("getQuizById:", gameId);
-  
+
   try {
     const quiz = await quizService.getQuizById(gameId);
-    
+
     if (!quiz) {
       res.status(404).json({error: "Game not found"});
       return;
@@ -86,14 +86,14 @@ export const getQuizById = async (req: Request, res: Response) => {
       const retObj = Object.fromEntries(
         Object.entries(quiz).filter(([key]) => !excludeKeys.includes(key))
       );
-      
+
       if (retObj.participants) {
         retObj.participants = retObj.participants.map((participant: participationService.Participant) => {
-          const {score, guessPrompt, ...rest} = participant;
+          const {score: _, guessPrompt, ...rest} = participant;
           return rest;
         });
       }
-      
+
       res.status(200).json(retObj);
     }
   } catch (error: any) {
@@ -104,7 +104,7 @@ export const getQuizById = async (req: Request, res: Response) => {
 export const createGame = async (req: Request, res: Response) => {
   const {secretPrompt, imageName, gameId, minBet, maxParticipants, durationHours} = req.body;
   console.log("createGame:", {gameId, minBet, maxParticipants, durationHours});
-  
+
   try {
     // Create game in Firestore
     await quizService.createGameFromGeneration(
@@ -119,9 +119,9 @@ export const createGame = async (req: Request, res: Response) => {
     // Initialize Solana smart contract game
     try {
       await initializeSolanaGame(
-        gameId, 
-        minBet || 100000000, 
-        maxParticipants || 100, 
+        gameId,
+        minBet || 100000000,
+        maxParticipants || 100,
         durationHours || 24
       );
       console.log(`✅ Solana game initialized for ID: ${gameId}`);
@@ -129,7 +129,7 @@ export const createGame = async (req: Request, res: Response) => {
       console.error(`❌ Failed to initialize Solana game: ${solanaError}`);
       // Game is still created in Firestore, but Solana initialization failed
     }
-    
+
     res.status(201).json({message: "Game created successfully", gameId});
   } catch (error: any) {
     res.status(500).send({error: error.message});
@@ -139,7 +139,7 @@ export const createGame = async (req: Request, res: Response) => {
 export const endGame = async (req: Request, res: Response) => {
   const {gameId} = req.params;
   console.log("endGame:", gameId);
-  
+
   try {
     await quizService.endGame(gameId);
     res.status(200).json({message: "Game ended successfully"});

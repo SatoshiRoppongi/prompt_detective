@@ -8,7 +8,7 @@ const quizzesCollection = db.collection("quizzes");
 
 export enum GameStatus {
   WAITING = "waiting",
-  ACTIVE = "active", 
+  ACTIVE = "active",
   ENDED = "ended",
   COMPLETED = "completed",
   CANCELLED = "cancelled"
@@ -79,17 +79,17 @@ export const getActiveQuiz = async (): Promise<QuizWithParticipant | null> => {
   try {
     // Get the latest quiz and check if it's active
     const latestQuiz = await getLatestQuiz();
-    
+
     if (!latestQuiz) {
       console.log("No quizzes found.");
       return null;
     }
-    
+
     if (latestQuiz.status === GameStatus.ACTIVE) {
       console.log("Active quiz found:", latestQuiz.id);
       return latestQuiz;
     }
-    
+
     console.log("Latest quiz is not active, status:", latestQuiz.status);
     return null;
   } catch (error) {
@@ -101,15 +101,15 @@ export const getActiveQuiz = async (): Promise<QuizWithParticipant | null> => {
 export const getQuizWithParticipants = async (quizId: string): Promise<QuizWithParticipant | null> => {
   try {
     const quizDoc = await quizzesCollection.doc(quizId).get();
-    
+
     if (!quizDoc.exists) {
       console.log("Quiz not found:", quizId);
       return null;
     }
-    
+
     // Get participants for this quiz
     const participantsSnapshot = await quizDoc.ref.collection("participants").get();
-    const participants: Participant[] = participantsSnapshot.docs.map(doc => {
+    const participants: Participant[] = participantsSnapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -119,17 +119,16 @@ export const getQuizWithParticipants = async (quizId: string): Promise<QuizWithP
         bet: data.bet || 0,
         betReturn: data.betReturn || 0,
         createdAt: data.createdAt,
-        submissionTime: data.submissionTime
+        submissionTime: data.submissionTime,
       } as Participant;
     });
-    
+
     const quizData = quizDoc.data() as Quiz;
     return {
       id: quizDoc.id,
       ...quizData,
-      participants: participants
+      participants: participants,
     } as QuizWithParticipant;
-    
   } catch (error) {
     console.error("Error getting quiz with participants:", error);
     return null;
@@ -140,9 +139,9 @@ export const createGameFromGeneration = async (
   secretPrompt: string,
   imageName: string,
   gameId: string,
-  minBet: number = 100000000, // 0.1 SOL in lamports
-  maxParticipants: number = 100,
-  durationHours: number = 24
+  minBet = 100000000, // 0.1 SOL in lamports
+  maxParticipants = 100,
+  durationHours = 24
 ): Promise<void> => {
   const now = new Date();
   const endTime = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
@@ -173,8 +172,8 @@ export const endGame = async (gameId: string): Promise<void> => {
 };
 
 export const completeGame = async (
-  gameId: string, 
-  winner: string, 
+  gameId: string,
+  winner: string,
   winnerScore: number
 ): Promise<void> => {
   await quizzesCollection.doc(gameId).update({
@@ -188,7 +187,7 @@ export const completeGame = async (
 export const getQuizById = async (gameId: string): Promise<QuizWithParticipant | null> => {
   try {
     const doc = await quizzesCollection.doc(gameId).get();
-    
+
     if (!doc.exists) {
       console.log("Quiz not found");
       return null;

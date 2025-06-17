@@ -34,7 +34,7 @@ export interface UserStats {
 
 export interface UserPreferences {
   notifications: boolean;
-  theme: 'light' | 'dark' | 'auto';
+  theme: "light" | "dark" | "auto";
   language: string;
   timezone: string;
   emailNotifications: boolean;
@@ -67,14 +67,14 @@ export interface Achievement {
   description: string;
   icon: string;
   unlockedAt: any;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  rarity: "common" | "rare" | "epic" | "legendary";
 }
 
 export const createUser = async (user: User): Promise<User> => {
   if (!user.name) {
     user.name = user.walletAddress;
   }
-  
+
   const now = admin.firestore.FieldValue.serverTimestamp();
   const userWithTimestamps = {
     ...user,
@@ -93,9 +93,9 @@ export const createUser = async (user: User): Promise<User> => {
     },
     preferences: {
       notifications: true,
-      theme: 'auto' as const,
-      language: 'ja',
-      timezone: 'Asia/Tokyo',
+      theme: "auto" as const,
+      language: "ja",
+      timezone: "Asia/Tokyo",
       emailNotifications: false,
       soundEffects: true,
     },
@@ -103,7 +103,7 @@ export const createUser = async (user: User): Promise<User> => {
     updatedAt: now,
     lastLoginAt: now,
   };
-  
+
   const docRef = await usersCollection.add(userWithTimestamps);
   return {id: docRef.id, ...userWithTimestamps};
 };
@@ -168,7 +168,7 @@ export const getUserProfile = async (walletAddress: string): Promise<UserProfile
       achievements,
     };
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error("Error getting user profile:", error);
     return null;
   }
 };
@@ -177,25 +177,25 @@ export const calculateUserStats = async (userId: string): Promise<UserStats> => 
   try {
     const user = await getUser(userId);
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
-    const participantsQuery = await db.collectionGroup('participants')
-      .where('walletAddress', '==', user.walletAddress)
+    const participantsQuery = await db.collectionGroup("participants")
+      .where("walletAddress", "==", user.walletAddress)
       .get();
 
-    const participations = participantsQuery.docs.map(doc => doc.data());
+    const participations = participantsQuery.docs.map((doc) => doc.data());
 
     const totalQuizzes = participations.length;
     const totalBets = participations.reduce((sum, p) => sum + (p.bet || 0), 0);
     const totalWinnings = participations.reduce((sum, p) => sum + (p.betReturn || 0), 0);
-    const totalWins = participations.filter(p => (p.betReturn || 0) > 0).length;
-    const scores = participations.map(p => p.score || 0);
+    const totalWins = participations.filter((p) => (p.betReturn || 0) > 0).length;
+    const scores = participations.map((p) => p.score || 0);
     const bestScore = Math.max(...scores, 0);
     const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     const winRate = totalQuizzes > 0 ? (totalWins / totalQuizzes) * 100 : 0;
 
-    const { currentStreak, bestStreak } = calculateStreaks(participations);
+    const {currentStreak, bestStreak} = calculateStreaks(participations);
 
     const totalSpent = totalBets;
     const netProfit = totalWinnings - totalSpent;
@@ -214,7 +214,7 @@ export const calculateUserStats = async (userId: string): Promise<UserStats> => 
       netProfit,
     };
   } catch (error) {
-    console.error('Error calculating user stats:', error);
+    console.error("Error calculating user stats:", error);
     return {
       totalQuizzes: 0,
       totalWins: 0,
@@ -231,16 +231,16 @@ export const calculateUserStats = async (userId: string): Promise<UserStats> => 
   }
 };
 
-export const getUserQuizHistory = async (userId: string, limit: number = 50): Promise<QuizHistory[]> => {
+export const getUserQuizHistory = async (userId: string, limit = 50): Promise<QuizHistory[]> => {
   try {
     const user = await getUser(userId);
     if (!user) {
       return [];
     }
 
-    const participantsQuery = await db.collectionGroup('participants')
-      .where('walletAddress', '==', user.walletAddress)
-      .orderBy('createdAt', 'desc')
+    const participantsQuery = await db.collectionGroup("participants")
+      .where("walletAddress", "==", user.walletAddress)
+      .orderBy("createdAt", "desc")
       .limit(limit)
       .get();
 
@@ -249,22 +249,22 @@ export const getUserQuizHistory = async (userId: string, limit: number = 50): Pr
     for (const participantDoc of participantsQuery.docs) {
       const participation = participantDoc.data();
       const quizRef = participantDoc.ref.parent.parent;
-      
+
       if (quizRef) {
         const quizDoc = await quizRef.get();
         const quizData = quizDoc.data();
-        
+
         if (quizData) {
-          const allParticipants = await quizRef.collection('participants').get();
-          const participantsList = allParticipants.docs.map(doc => doc.data());
-          
+          const allParticipants = await quizRef.collection("participants").get();
+          const participantsList = allParticipants.docs.map((doc) => doc.data());
+
           const sortedParticipants = participantsList.sort((a, b) => (b.score || 0) - (a.score || 0));
-          const rank = sortedParticipants.findIndex(p => p.walletAddress === user.walletAddress) + 1;
-          
+          const rank = sortedParticipants.findIndex((p) => p.walletAddress === user.walletAddress) + 1;
+
           history.push({
             quizId: quizDoc.id,
-            secretPrompt: quizData.secretPrompt || '',
-            guessPrompt: participation.guessPrompt || '',
+            secretPrompt: quizData.secretPrompt || "",
+            guessPrompt: participation.guessPrompt || "",
             score: participation.score || 0,
             bet: participation.bet || 0,
             winnings: participation.betReturn || 0,
@@ -279,7 +279,7 @@ export const getUserQuizHistory = async (userId: string, limit: number = 50): Pr
 
     return history;
   } catch (error) {
-    console.error('Error getting user quiz history:', error);
+    console.error("Error getting user quiz history:", error);
     return [];
   }
 };
@@ -296,69 +296,69 @@ export const getUserAchievements = async (userId: string): Promise<Achievement[]
 
     if (stats.totalQuizzes >= 1) {
       achievements.push({
-        id: 'first_quiz',
-        name: '初参加',
-        description: '初めてクイズに参加しました',
-        icon: 'mdi-star',
+        id: "first_quiz",
+        name: "初参加",
+        description: "初めてクイズに参加しました",
+        icon: "mdi-star",
         unlockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        rarity: 'common',
+        rarity: "common",
       });
     }
 
     if (stats.totalQuizzes >= 10) {
       achievements.push({
-        id: 'quiz_veteran',
-        name: 'クイズベテラン',
-        description: '10回のクイズに参加しました',
-        icon: 'mdi-trophy',
+        id: "quiz_veteran",
+        name: "クイズベテラン",
+        description: "10回のクイズに参加しました",
+        icon: "mdi-trophy",
         unlockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        rarity: 'rare',
+        rarity: "rare",
       });
     }
 
     if (stats.totalWins >= 1) {
       achievements.push({
-        id: 'first_win',
-        name: '初勝利',
-        description: '初めてクイズに勝利しました',
-        icon: 'mdi-medal',
+        id: "first_win",
+        name: "初勝利",
+        description: "初めてクイズに勝利しました",
+        icon: "mdi-medal",
         unlockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        rarity: 'common',
+        rarity: "common",
       });
     }
 
     if (stats.bestStreak >= 3) {
       achievements.push({
-        id: 'streak_master',
-        name: '連勝マスター',
-        description: '3連勝を達成しました',
-        icon: 'mdi-fire',
+        id: "streak_master",
+        name: "連勝マスター",
+        description: "3連勝を達成しました",
+        icon: "mdi-fire",
         unlockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        rarity: 'epic',
+        rarity: "epic",
       });
     }
 
     if (stats.bestScore >= 90) {
       achievements.push({
-        id: 'perfect_guesser',
-        name: '完璧な推理',
-        description: '90点以上を獲得しました',
-        icon: 'mdi-bullseye',
+        id: "perfect_guesser",
+        name: "完璧な推理",
+        description: "90点以上を獲得しました",
+        icon: "mdi-bullseye",
         unlockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        rarity: 'legendary',
+        rarity: "legendary",
       });
     }
 
     return achievements;
   } catch (error) {
-    console.error('Error getting user achievements:', error);
+    console.error("Error getting user achievements:", error);
     return [];
   }
 };
 
 const calculateStreaks = (participations: any[]): { currentStreak: number; bestStreak: number } => {
   if (participations.length === 0) {
-    return { currentStreak: 0, bestStreak: 0 };
+    return {currentStreak: 0, bestStreak: 0};
   }
 
   const sortedParticipations = participations
@@ -370,7 +370,7 @@ const calculateStreaks = (participations: any[]): { currentStreak: number; bestS
 
   for (let i = 0; i < sortedParticipations.length; i++) {
     const isWin = (sortedParticipations[i].betReturn || 0) > 0;
-    
+
     if (isWin) {
       tempStreak++;
       if (i === 0) {
@@ -382,9 +382,9 @@ const calculateStreaks = (participations: any[]): { currentStreak: number; bestS
       }
       tempStreak = 0;
     }
-    
+
     bestStreak = Math.max(bestStreak, tempStreak);
   }
 
-  return { currentStreak, bestStreak };
+  return {currentStreak, bestStreak};
 };

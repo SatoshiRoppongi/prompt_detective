@@ -23,18 +23,20 @@ if (!programId) {
   throw new Error("PROGRAM_IDが設定されていません。");
 }
 
-// 秘密鍵の読み込み
+// 秘密鍵の読み込み (開発・テスト環境でのみ使用)
+let payer: Keypair | null = null;
 const secretKeyString = process.env.SECRET_KEY;
-if (!secretKeyString) {
-  throw new Error("SECRET_KEYが設定されていません。");
-}
 
-const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
-if (secretKeyArray.length !== 64) {
-  throw new Error("SECRET_KEYの長さが正しくありません。");
+if (secretKeyString) {
+  const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
+  if (secretKeyArray.length === 64) {
+    payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
+  } else {
+    console.warn("SECRET_KEYの形式が正しくありません。Solana機能は無効化されます。");
+  }
+} else {
+  console.warn("SECRET_KEYが設定されていません。Solana機能は無効化されます。");
 }
-
-const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
 
 /**
  * 新しいゲームを初期化
@@ -42,11 +44,16 @@ const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
 export const initializeGame = async (
   gameId: string,
   minBet: number = 0.1 * LAMPORTS_PER_SOL, // 0.1 SOL
-  maxParticipants: number = 100,
-  durationHours: number = 24
+  maxParticipants = 100,
+  durationHours = 24
 ): Promise<string> => {
+  if (!payer) {
+    console.warn("Solana functionality is disabled (no payer configured). Game initialization skipped.");
+    return `mock-signature-init-${gameId}-${Date.now()}`;
+  }
+
   const programIdPubkey = new PublicKey(programId);
-  
+
   // Game PDA (Program Derived Address) を生成
   const [gamePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("game"), Buffer.from(gameId)],
@@ -77,7 +84,7 @@ export const initializeGame = async (
 
   const transaction = new Transaction().add(instruction);
   const signature = await connection.sendTransaction(transaction, [payer]);
-  
+
   console.log(`✅ Game initialized: ${gameId}, signature: ${signature}`);
   return signature;
 };
@@ -86,8 +93,13 @@ export const initializeGame = async (
  * ゲームを終了
  */
 export const endGame = async (gameId: string): Promise<string> => {
+  if (!payer) {
+    console.warn("Solana functionality is disabled (no payer configured). Game end skipped.");
+    return `mock-signature-end-${gameId}-${Date.now()}`;
+  }
+
   const programIdPubkey = new PublicKey(programId);
-  
+
   const [gamePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("game"), Buffer.from(gameId)],
     programIdPubkey
@@ -107,7 +119,7 @@ export const endGame = async (gameId: string): Promise<string> => {
 
   const transaction = new Transaction().add(instruction);
   const signature = await connection.sendTransaction(transaction, [payer]);
-  
+
   console.log(`✅ Game ended: ${gameId}, signature: ${signature}`);
   return signature;
 };
@@ -120,9 +132,14 @@ export const distributeWinnings = async (
   winnerPubkey: string,
   winnerAmount: number
 ): Promise<string> => {
+  if (!payer) {
+    console.warn(`Solana functionality is disabled (no payer configured). Winnings distribution skipped for ${winnerPubkey}: ${winnerAmount} lamports`);
+    return `mock-signature-distribute-${gameId}-${Date.now()}`;
+  }
+
   const programIdPubkey = new PublicKey(programId);
   const winnerPublicKey = new PublicKey(winnerPubkey);
-  
+
   const [gamePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("game"), Buffer.from(gameId)],
     programIdPubkey
@@ -148,7 +165,7 @@ export const distributeWinnings = async (
 
   const transaction = new Transaction().add(instruction);
   const signature = await connection.sendTransaction(transaction, [payer]);
-  
+
   console.log(`✅ Winnings distributed to ${winnerPubkey}: ${winnerAmount} lamports, signature: ${signature}`);
   return signature;
 };
@@ -158,7 +175,7 @@ export const distributeWinnings = async (
  */
 export const getGameInfo = async (gameId: string): Promise<any> => {
   const programIdPubkey = new PublicKey(programId);
-  
+
   const [gamePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("game"), Buffer.from(gameId)],
     programIdPubkey
@@ -169,7 +186,7 @@ export const getGameInfo = async (gameId: string): Promise<any> => {
     if (!accountInfo) {
       return null;
     }
-    
+
     // デシリアライズロジックは実際のスマートコントラクトの構造に応じて実装
     return {
       address: gamePda.toBase58(),
@@ -185,7 +202,7 @@ export const getGameInfo = async (gameId: string): Promise<any> => {
 // 後方互換性のために既存のdistributes関数も保持
 export const distributes = async (scores: Array<[string, number]>): Promise<void> => {
   if (scores.length === 0) return;
-  
+
   // 最高スコアの参加者を勝者とする
   const winner = scores.reduce((prev, current) => {
     return prev[1] > current[1] ? prev : current;
@@ -193,7 +210,7 @@ export const distributes = async (scores: Array<[string, number]>): Promise<void
 
   const [winnerAddress, winnerScore] = winner;
   console.log(`🏆 Winner: ${winnerAddress} with score: ${winnerScore}`);
-  
+
   // TODO: 実際の賞金額を計算し、distributeWinningsを呼び出す
   // 現在はモックとして処理をログ出力のみ
   console.log("🎉 Prize distribution completed (mock)");

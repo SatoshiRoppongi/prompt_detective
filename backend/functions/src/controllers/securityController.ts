@@ -1,16 +1,16 @@
-import { Request, Response } from "express";
+import {Request, Response} from "express";
 import * as securityService from "../services/securityService";
 
 export const logSecurityEvent = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress, action, details, severity } = req.body;
+    const {walletAddress, action, details, severity} = req.body;
     const ipAddress = req.ip || req.socket?.remoteAddress;
-    const userAgent = req.get('User-Agent');
+    const userAgent = req.get("User-Agent");
 
     if (!walletAddress || !action) {
       res.status(400).json({
         success: false,
-        error: "Wallet address and action are required"
+        error: "Wallet address and action are required",
       });
       return;
     }
@@ -19,33 +19,32 @@ export const logSecurityEvent = async (req: Request, res: Response): Promise<voi
       walletAddress,
       action,
       details || {},
-      severity || 'low',
+      severity || "low",
       ipAddress,
       userAgent
     );
 
     res.json({
       success: true,
-      message: "Security event logged successfully"
+      message: "Security event logged successfully",
     });
-
   } catch (error: any) {
-    console.error('Error logging security event:', error);
+    console.error("Error logging security event:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to log security event"
+      error: error.message || "Failed to log security event",
     });
   }
 };
 
 export const checkRateLimit = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { identifier, action } = req.body;
+    const {identifier, action} = req.body;
 
     if (!identifier || !action) {
       res.status(400).json({
         success: false,
-        error: "Identifier and action are required"
+        error: "Identifier and action are required",
       });
       return;
     }
@@ -54,26 +53,25 @@ export const checkRateLimit = async (req: Request, res: Response): Promise<void>
 
     res.json({
       success: true,
-      data: rateLimitResult
+      data: rateLimitResult,
     });
-
   } catch (error: any) {
-    console.error('Error checking rate limit:', error);
+    console.error("Error checking rate limit:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to check rate limit"
+      error: error.message || "Failed to check rate limit",
     });
   }
 };
 
 export const validateQuizSubmission = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress, quizId, submissionData } = req.body;
+    const {walletAddress, quizId, submissionData} = req.body;
 
     if (!walletAddress || !quizId || !submissionData) {
       res.status(400).json({
         success: false,
-        error: "Wallet address, quiz ID, and submission data are required"
+        error: "Wallet address, quiz ID, and submission data are required",
       });
       return;
     }
@@ -84,18 +82,18 @@ export const validateQuizSubmission = async (req: Request, res: Response): Promi
       res.status(403).json({
         success: false,
         error: "User is banned",
-        data: banStatus
+        data: banStatus,
       });
       return;
     }
 
     // Check rate limit
-    const rateLimitResult = await securityService.checkRateLimit(walletAddress, 'answer_submission');
+    const rateLimitResult = await securityService.checkRateLimit(walletAddress, "answer_submission");
     if (!rateLimitResult.allowed) {
       res.status(429).json({
         success: false,
         error: "Rate limit exceeded",
-        data: rateLimitResult
+        data: rateLimitResult,
       });
       return;
     }
@@ -109,27 +107,26 @@ export const validateQuizSubmission = async (req: Request, res: Response): Promi
 
     res.json({
       success: true,
-      data: validationResult
+      data: validationResult,
     });
-
   } catch (error: any) {
-    console.error('Error validating quiz submission:', error);
+    console.error("Error validating quiz submission:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to validate submission"
+      error: error.message || "Failed to validate submission",
     });
   }
 };
 
 export const banUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
-    const { reason, bannedBy, permanent, expirationHours } = req.body;
+    const {walletAddress} = req.params;
+    const {reason, bannedBy, permanent, expirationHours} = req.body;
 
     if (!walletAddress || !reason || !bannedBy) {
       res.status(400).json({
         success: false,
-        error: "Wallet address, reason, and bannedBy are required"
+        error: "Wallet address, reason, and bannedBy are required",
       });
       return;
     }
@@ -144,26 +141,25 @@ export const banUser = async (req: Request, res: Response): Promise<void> => {
 
     res.json({
       success: true,
-      message: "User banned successfully"
+      message: "User banned successfully",
     });
-
   } catch (error: any) {
-    console.error('Error banning user:', error);
+    console.error("Error banning user:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to ban user"
+      error: error.message || "Failed to ban user",
     });
   }
 };
 
 export const checkUserBanned = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
+    const {walletAddress} = req.params;
 
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
@@ -172,39 +168,37 @@ export const checkUserBanned = async (req: Request, res: Response): Promise<void
 
     res.json({
       success: true,
-      data: banStatus
+      data: banStatus,
     });
-
   } catch (error: any) {
-    console.error('Error checking user ban status:', error);
+    console.error("Error checking user ban status:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to check ban status"
+      error: error.message || "Failed to check ban status",
     });
   }
 };
 
 export const getSecurityStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { timeframe } = req.query;
+    const {timeframe} = req.query;
 
-    const validTimeframes = ['day', 'week', 'month'];
-    const selectedTimeframe = validTimeframes.includes(timeframe as string) 
-      ? (timeframe as 'day' | 'week' | 'month') 
-      : 'week';
+    const validTimeframes = ["day", "week", "month"];
+    const selectedTimeframe = validTimeframes.includes(timeframe as string) ?
+      (timeframe as "day" | "week" | "month") :
+      "week";
 
     const stats = await securityService.getSecurityStats(selectedTimeframe);
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
-
   } catch (error: any) {
-    console.error('Error getting security stats:', error);
+    console.error("Error getting security stats:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get security statistics"
+      error: error.message || "Failed to get security statistics",
     });
   }
 };
@@ -215,14 +209,13 @@ export const generateSecureToken = async (req: Request, res: Response): Promise<
 
     res.json({
       success: true,
-      data: { token }
+      data: {token},
     });
-
   } catch (error: any) {
-    console.error('Error generating secure token:', error);
+    console.error("Error generating secure token:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to generate secure token"
+      error: error.message || "Failed to generate secure token",
     });
   }
 };
@@ -235,20 +228,20 @@ export const securityMiddleware = async (req: Request, res: Response, next: any)
     req.query = securityService.sanitizeInput(req.query);
 
     // Check for basic security headers
-    const userAgent = req.get('User-Agent');
+    const userAgent = req.get("User-Agent");
     if (!userAgent || userAgent.length < 5) {
       await securityService.logSecurityEvent(
-        'unknown',
-        'suspicious_request',
-        { userAgent, path: req.path },
-        'medium',
+        "unknown",
+        "suspicious_request",
+        {userAgent, path: req.path},
+        "medium",
         req.ip
       );
     }
 
     next();
   } catch (error) {
-    console.error('Security middleware error:', error);
+    console.error("Security middleware error:", error);
     next(); // Continue even if security check fails
   }
 };
@@ -257,21 +250,21 @@ export const securityMiddleware = async (req: Request, res: Response, next: any)
 export const rateLimitMiddleware = (action: string) => {
   return async (req: Request, res: Response, next: any) => {
     try {
-      const identifier = req.body.walletAddress || req.ip || 'unknown';
+      const identifier = req.body.walletAddress || req.ip || "unknown";
       const rateLimitResult = await securityService.checkRateLimit(identifier, action);
 
       if (!rateLimitResult.allowed) {
         res.status(429).json({
           success: false,
           error: "Rate limit exceeded",
-          data: rateLimitResult
+          data: rateLimitResult,
         });
         return;
       }
 
       next();
     } catch (error) {
-      console.error('Rate limit middleware error:', error);
+      console.error("Rate limit middleware error:", error);
       next(); // Continue even if rate limit check fails
     }
   };

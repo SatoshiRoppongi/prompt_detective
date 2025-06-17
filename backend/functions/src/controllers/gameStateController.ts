@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import {Request, Response} from "express";
 import * as gameStateService from "../services/gameStateService";
 
 /**
@@ -6,36 +6,35 @@ import * as gameStateService from "../services/gameStateService";
  */
 export const getGameState = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    
+    const {quizId} = req.params;
+
     if (!quizId) {
       res.status(400).json({
         success: false,
-        error: "Quiz ID is required"
+        error: "Quiz ID is required",
       });
       return;
     }
-    
+
     const gameTimer = await gameStateService.getGameTimer(quizId);
-    
+
     if (!gameTimer) {
       res.status(404).json({
         success: false,
-        error: "Game state not found"
+        error: "Game state not found",
       });
       return;
     }
-    
+
     res.json({
       success: true,
-      data: gameTimer
+      data: gameTimer,
     });
-    
   } catch (error: any) {
-    console.error('Error in getGameState:', error);
+    console.error("Error in getGameState:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get game state"
+      error: error.message || "Failed to get game state",
     });
   }
 };
@@ -45,42 +44,41 @@ export const getGameState = async (req: Request, res: Response): Promise<void> =
  */
 export const initializeGameState = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    const { durationMinutes, autoTransitions = true } = req.body;
-    
+    const {quizId} = req.params;
+    const {durationMinutes, autoTransitions = true} = req.body;
+
     if (!quizId) {
       res.status(400).json({
         success: false,
-        error: "Quiz ID is required"
+        error: "Quiz ID is required",
       });
       return;
     }
 
     console.log(`🎮 Initializing game state for quiz: ${quizId}`);
     console.log(`📋 Parameters: durationMinutes=${durationMinutes}, autoTransitions=${autoTransitions}`);
-    
+
     const gameTimer = await gameStateService.initializeGameState(
       quizId,
       durationMinutes,
       autoTransitions
     );
-    
+
     console.log(`✅ Game state initialized successfully for quiz: ${quizId}`);
-    
+
     res.json({
       success: true,
       message: "Game state initialized successfully",
-      data: gameTimer
+      data: gameTimer,
     });
-    
   } catch (error: any) {
-    console.error('❌ Error in initializeGameState controller:', error);
-    console.error('❌ Error stack:', error.stack);
-    
+    console.error("❌ Error in initializeGameState controller:", error);
+    console.error("❌ Error stack:", error.stack);
+
     res.status(500).json({
       success: false,
       error: error.message || "Failed to initialize game state",
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };
@@ -90,36 +88,35 @@ export const initializeGameState = async (req: Request, res: Response): Promise<
  */
 export const updateGameState = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    
+    const {quizId} = req.params;
+
     if (!quizId) {
       res.status(400).json({
         success: false,
-        error: "Quiz ID is required"
+        error: "Quiz ID is required",
       });
       return;
     }
-    
+
     const gameTimer = await gameStateService.updateGameState(quizId);
-    
+
     if (!gameTimer) {
       res.status(404).json({
         success: false,
-        error: "Game state not found"
+        error: "Game state not found",
       });
       return;
     }
-    
+
     res.json({
       success: true,
-      data: gameTimer
+      data: gameTimer,
     });
-    
   } catch (error: any) {
-    console.error('Error in updateGameState:', error);
+    console.error("Error in updateGameState:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to update game state"
+      error: error.message || "Failed to update game state",
     });
   }
 };
@@ -129,52 +126,51 @@ export const updateGameState = async (req: Request, res: Response): Promise<void
  */
 export const transitionPhase = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    const { phase, reason } = req.body;
-    
+    const {quizId} = req.params;
+    const {phase, reason} = req.body;
+
     if (!quizId) {
       res.status(400).json({
         success: false,
-        error: "Quiz ID is required"
+        error: "Quiz ID is required",
       });
       return;
     }
-    
+
     if (!phase) {
       res.status(400).json({
         success: false,
-        error: "Phase is required"
+        error: "Phase is required",
       });
       return;
     }
-    
+
     const gameTimer = await gameStateService.getGameTimer(quizId);
     if (!gameTimer) {
       res.status(404).json({
         success: false,
-        error: "Game state not found"
+        error: "Game state not found",
       });
       return;
     }
-    
+
     const updatedTimer = await gameStateService.transitionPhase(
       gameTimer,
       phase,
-      'manual',
+      "manual",
       reason
     );
-    
+
     res.json({
       success: true,
       message: `Phase transitioned to ${phase}`,
-      data: updatedTimer
+      data: updatedTimer,
     });
-    
   } catch (error: any) {
-    console.error('Error in transitionPhase:', error);
+    console.error("Error in transitionPhase:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to transition phase"
+      error: error.message || "Failed to transition phase",
     });
   }
 };
@@ -185,20 +181,19 @@ export const transitionPhase = async (req: Request, res: Response): Promise<void
 export const getActiveGameStates = async (req: Request, res: Response): Promise<void> => {
   try {
     const activeTimers = await gameStateService.getActiveGameTimers();
-    
+
     res.json({
       success: true,
       data: {
         timers: activeTimers,
-        count: activeTimers.length
-      }
+        count: activeTimers.length,
+      },
     });
-    
   } catch (error: any) {
-    console.error('Error in getActiveGameStates:', error);
+    console.error("Error in getActiveGameStates:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get active game states"
+      error: error.message || "Failed to get active game states",
     });
   }
 };
@@ -209,17 +204,16 @@ export const getActiveGameStates = async (req: Request, res: Response): Promise<
 export const updateAllGameStates = async (req: Request, res: Response): Promise<void> => {
   try {
     await gameStateService.updateAllActiveGameStates();
-    
+
     res.json({
       success: true,
-      message: "All active game states updated successfully"
+      message: "All active game states updated successfully",
     });
-    
   } catch (error: any) {
-    console.error('Error in updateAllGameStates:', error);
+    console.error("Error in updateAllGameStates:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to update all game states"
+      error: error.message || "Failed to update all game states",
     });
   }
 };
@@ -229,36 +223,35 @@ export const updateAllGameStates = async (req: Request, res: Response): Promise<
  */
 export const getGameStateHistory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    
+    const {quizId} = req.params;
+
     if (!quizId) {
       res.status(400).json({
         success: false,
-        error: "Quiz ID is required"
+        error: "Quiz ID is required",
       });
       return;
     }
-    
+
     const history = await gameStateService.getGameStateHistory(quizId);
-    
+
     if (!history) {
       res.status(404).json({
         success: false,
-        error: "Game state history not found"
+        error: "Game state history not found",
       });
       return;
     }
-    
+
     res.json({
       success: true,
-      data: history
+      data: history,
     });
-    
   } catch (error: any) {
-    console.error('Error in getGameStateHistory:', error);
+    console.error("Error in getGameStateHistory:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get game state history"
+      error: error.message || "Failed to get game state history",
     });
   }
 };

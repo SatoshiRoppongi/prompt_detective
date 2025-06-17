@@ -31,7 +31,7 @@ export const createRateLimit = (options: RateLimitOptions) => {
     windowMs,
     maxRequests,
     message = "Too many requests, please try again later",
-    keyGenerator = (req: Request) => req.ip || "unknown"
+    keyGenerator = (req: Request) => req.ip || "unknown",
   } = options;
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -46,7 +46,7 @@ export const createRateLimit = (options: RateLimitOptions) => {
       // Create new record or reset expired one
       record = {
         count: 1,
-        resetTime: windowEnd
+        resetTime: windowEnd,
       };
       requestStore.set(key, record);
       next();
@@ -56,7 +56,7 @@ export const createRateLimit = (options: RateLimitOptions) => {
     if (record.count >= maxRequests) {
       res.status(429).json({
         error: message,
-        retryAfter: Math.ceil((record.resetTime - now) / 1000)
+        retryAfter: Math.ceil((record.resetTime - now) / 1000),
       });
       return;
     }
@@ -82,11 +82,11 @@ export const participationRateLimit = createRateLimit({
     // Rate limit by wallet address if available
     const walletAddress = req.body?.walletAddress;
     return walletAddress || req.ip || "unknown";
-  }
+  },
 });
 
 export const gameCreationRateLimit = createRateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   maxRequests: 10, // 10 game creations per hour
-  message: "Too many game creation attempts, please wait before creating another game"
+  message: "Too many game creation attempts, please wait before creating another game",
 });

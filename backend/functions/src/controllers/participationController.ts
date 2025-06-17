@@ -5,7 +5,7 @@ import * as leaderboardService from "../services/leaderboardService";
 import * as securityService from "../services/securityService";
 export const createParticipant = async (req: Request, res: Response) => {
   try {
-    const { quizId, walletAddress, guessPrompt, bet } = req.body;
+    const {quizId, walletAddress, guessPrompt, bet} = req.body;
     const submissionTime = new Date();
     const startTime = Date.now();
 
@@ -13,7 +13,7 @@ export const createParticipant = async (req: Request, res: Response) => {
     if (!quizId || !walletAddress || !guessPrompt || bet === undefined) {
       res.status(400).json({
         success: false,
-        error: "Missing required fields: quizId, walletAddress, guessPrompt, bet"
+        error: "Missing required fields: quizId, walletAddress, guessPrompt, bet",
       });
       return;
     }
@@ -24,7 +24,7 @@ export const createParticipant = async (req: Request, res: Response) => {
       await securityService.logSecurityEvent(
         walletAddress,
         "banned_user_participation_attempt",
-        { quizId, reason: banStatus.reason },
+        {quizId, reason: banStatus.reason},
         "medium",
         req.ip
       );
@@ -32,7 +32,7 @@ export const createParticipant = async (req: Request, res: Response) => {
       res.status(403).json({
         success: false,
         error: "User is banned from participating",
-        data: banStatus
+        data: banStatus,
       });
       return;
     }
@@ -43,7 +43,7 @@ export const createParticipant = async (req: Request, res: Response) => {
       await securityService.logSecurityEvent(
         walletAddress,
         "rate_limit_exceeded",
-        { action: "quiz_participation", quizId },
+        {action: "quiz_participation", quizId},
         "medium",
         req.ip
       );
@@ -51,7 +51,7 @@ export const createParticipant = async (req: Request, res: Response) => {
       res.status(429).json({
         success: false,
         error: "Rate limit exceeded for quiz participation",
-        data: rateLimitResult
+        data: rateLimitResult,
       });
       return;
     }
@@ -63,7 +63,7 @@ export const createParticipant = async (req: Request, res: Response) => {
       processingTime: Date.now() - startTime,
       submissionTime: submissionTime.toISOString(),
       userAgent: req.get("User-Agent"),
-      ipAddress: req.ip
+      ipAddress: req.ip,
     };
 
     // Run anti-cheat validation
@@ -82,7 +82,7 @@ export const createParticipant = async (req: Request, res: Response) => {
           quizId,
           riskScore: validationResult.riskScore,
           suspiciousActivities: validationResult.suspiciousActivities,
-          recommendations: validationResult.recommendations
+          recommendations: validationResult.recommendations,
         },
         validationResult.riskScore > 70 ? "critical" : "high",
         req.ip
@@ -93,8 +93,8 @@ export const createParticipant = async (req: Request, res: Response) => {
         error: "Submission failed security validation",
         data: {
           riskScore: validationResult.riskScore,
-          suspiciousActivities: validationResult.suspiciousActivities
-        }
+          suspiciousActivities: validationResult.suspiciousActivities,
+        },
       });
       return;
     }
@@ -107,7 +107,7 @@ export const createParticipant = async (req: Request, res: Response) => {
         {
           quizId,
           riskScore: validationResult.riskScore,
-          suspiciousActivities: validationResult.suspiciousActivities
+          suspiciousActivities: validationResult.suspiciousActivities,
         },
         "medium",
         req.ip
@@ -130,12 +130,12 @@ export const createParticipant = async (req: Request, res: Response) => {
       {
         quizId,
         bet,
-        processingTime: Date.now() - startTime
+        processingTime: Date.now() - startTime,
       },
       "low",
       req.ip
     );
-    
+
     // Create response data for broadcasting and API response
     const participantData = {
       quizId,
@@ -143,15 +143,15 @@ export const createParticipant = async (req: Request, res: Response) => {
       guessPrompt,
       bet,
       submissionTime: submissionTime.toISOString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
-    
+
     // Broadcast new participation to connected clients
     broadcastNewParticipation(quizId, participantData);
-    
+
     // Get updated leaderboard and include in response
     const leaderboard = await leaderboardService.getLeaderboard(quizId, 10);
-    
+
     res.status(201).json({
       success: true,
       message: "Participation created successfully",
@@ -160,19 +160,19 @@ export const createParticipant = async (req: Request, res: Response) => {
         leaderboard,
         securityInfo: {
           riskScore: validationResult.riskScore,
-          validated: true
-        }
-      }
+          validated: true,
+        },
+      },
     });
   } catch (error: any) {
     console.error("Error creating participant:", error);
-    
+
     // Log error for security monitoring
     if (req.body.walletAddress) {
       await securityService.logSecurityEvent(
         req.body.walletAddress,
         "participation_error",
-        { error: error.message, quizId: req.body.quizId },
+        {error: error.message, quizId: req.body.quizId},
         "medium",
         req.ip
       );
@@ -180,7 +180,7 @@ export const createParticipant = async (req: Request, res: Response) => {
 
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to create participation"
+      error: error.message || "Failed to create participation",
     });
   }
 };

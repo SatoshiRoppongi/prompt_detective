@@ -16,19 +16,21 @@ if (!programId) {
 }
 
 // 秘密鍵の読み込みとUint8Arrayへの変換
+let payer: Keypair | null = null;
 const secretKeyString = process.env.SECRET_KEY;
-if (!secretKeyString) {
-  throw new Error("SECRET_KEYが設定されていません。");
-}
 
-const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
-if (secretKeyArray.length !== 64) {
-  throw new Error("SECRET_KEYの長さが正しくありません。");
+if (secretKeyString) {
+  const secretKeyArray = secretKeyString.split(",").map((num) => parseInt(num, 10));
+  if (secretKeyArray.length === 64) {
+    payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray), {
+      skipValidation: false,
+    });
+  } else {
+    console.warn("SECRET_KEYの形式が正しくありません。Solana機能は無効化されます。");
+  }
+} else {
+  console.warn("SECRET_KEYが設定されていません。Solana機能は無効化されます。");
 }
-
-const payer = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray), {
-  skipValidation: false,
-});
 
 // GameInstruction定義
 class DistributesInstruction {
@@ -62,7 +64,16 @@ const SCHEMA = new Map([
 
 export const distributes = async (scores: Array<[string, number]>) => {
   if (!programId) {
-    // TODO: 適切なハンドリングをする
+    console.warn("PROGRAM_IDが設定されていません。");
+    return;
+  }
+
+  if (!payer) {
+    console.warn("Solana functionality is disabled (no payer configured). Distribution skipped.");
+    console.log(`Mock distribution for ${scores.length} participants:`);
+    scores.forEach(([address, score], index) => {
+      console.log(`  ${index + 1}. ${address}: ${score} points`);
+    });
     return;
   }
   const programIdPubKey = new PublicKey(programId);

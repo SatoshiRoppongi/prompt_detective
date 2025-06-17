@@ -16,7 +16,7 @@ import {
   disableAutoGameGeneration,
   setDailyImageLimit,
   resetDailyImageCount,
-  checkDailyImageLimit
+  checkDailyImageLimit,
 } from "../services/schedulerService";
 
 const db = admin.firestore();
@@ -27,27 +27,27 @@ export const getSystemStatus = async (req: AuthenticatedRequest, res: Response):
     const activeQuizzesSnapshot = await db.collection("quiz")
       .where("status", "==", "active")
       .get();
-    
+
     // Get total participants in last 24 hours
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentParticipationsSnapshot = await db.collectionGroup("participants")
       .where("createdAt", ">=", oneDayAgo)
       .get();
-    
+
     // Get completed games in last 24 hours
     const completedGamesSnapshot = await db.collection("quiz")
       .where("status", "==", "completed")
       .where("endTime", ">=", oneDayAgo)
       .get();
-    
+
     const systemStatus = {
       activeGames: activeQuizzesSnapshot.size,
       recentParticipants: recentParticipationsSnapshot.size,
       completedGamesLast24h: completedGamesSnapshot.size,
       timestamp: new Date().toISOString(),
-      serverStatus: "healthy"
+      serverStatus: "healthy",
     };
-    
+
     res.json(systemStatus);
   } catch (error: any) {
     console.error("Error getting system status:", error);
@@ -61,21 +61,21 @@ export const getActiveGames = async (req: AuthenticatedRequest, res: Response): 
       .where("status", "==", "active")
       .orderBy("createdAt", "desc")
       .get();
-    
+
     const activeGames = [];
     for (const doc of activeGamesSnapshot.docs) {
       const gameData: any = {id: doc.id, ...doc.data()};
-      
+
       // Get participant count for each game
       const participantsSnapshot = await db.collection("quiz")
         .doc(doc.id)
         .collection("participants")
         .get();
-      
+
       gameData.participantCount = participantsSnapshot.size;
       activeGames.push(gameData);
     }
-    
+
     res.json(activeGames);
   } catch (error: any) {
     console.error("Error getting active games:", error);
@@ -86,47 +86,46 @@ export const getActiveGames = async (req: AuthenticatedRequest, res: Response): 
 export const forceEndGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {gameId, reason} = req.body;
-    
+
     if (!gameId) {
       res.status(400).json({error: "Game ID is required"});
       return;
     }
-    
+
     const gameRef = db.collection("quiz").doc(gameId);
     const gameDoc = await gameRef.get();
-    
+
     if (!gameDoc.exists) {
       res.status(404).json({error: "Game not found"});
       return;
     }
-    
+
     const gameData = gameDoc.data();
-    
+
     if (gameData?.status !== "active") {
       res.status(400).json({error: "Game is not active"});
       return;
     }
-    
+
     // Update game status to force-ended
     await gameRef.update({
       status: "force-ended",
       endTime: admin.firestore.FieldValue.serverTimestamp(),
       endReason: reason || "Manually ended by admin",
-      endedBy: req.user?.email || "admin"
+      endedBy: req.user?.email || "admin",
     });
-    
+
     // Broadcast game end to connected clients
     broadcastGameEnd(gameId, {
       status: "force-ended",
-      reason: reason || "Game ended by administrator"
+      reason: reason || "Game ended by administrator",
     });
-    
+
     res.json({
       success: true,
       message: "Game ended successfully",
-      gameId: gameId
+      gameId: gameId,
     });
-    
   } catch (error: any) {
     console.error("Error ending game:", error);
     res.status(500).json({error: "Failed to end game", details: error.message});
@@ -136,50 +135,49 @@ export const forceEndGame = async (req: AuthenticatedRequest, res: Response): Pr
 export const extendGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {gameId, extensionMinutes} = req.body;
-    
+
     if (!gameId || !extensionMinutes) {
       res.status(400).json({error: "Game ID and extension time are required"});
       return;
     }
-    
+
     const gameRef = db.collection("quiz").doc(gameId);
     const gameDoc = await gameRef.get();
-    
+
     if (!gameDoc.exists) {
       res.status(404).json({error: "Game not found"});
       return;
     }
-    
+
     const gameData = gameDoc.data();
-    
+
     if (gameData?.status !== "active") {
       res.status(400).json({error: "Game is not active"});
       return;
     }
-    
+
     // Calculate new end time
     const currentEndTime = gameData.endTime.toDate();
     const newEndTime = new Date(currentEndTime.getTime() + extensionMinutes * 60 * 1000);
-    
+
     await gameRef.update({
       endTime: admin.firestore.Timestamp.fromDate(newEndTime),
       extendedBy: req.user?.email || "admin",
-      extensionReason: `Extended by ${extensionMinutes} minutes`
+      extensionReason: `Extended by ${extensionMinutes} minutes`,
     });
-    
+
     // Broadcast update to connected clients
     broadcastQuizUpdate(gameId, {
       id: gameId,
       ...gameData,
-      endTime: admin.firestore.Timestamp.fromDate(newEndTime)
+      endTime: admin.firestore.Timestamp.fromDate(newEndTime),
     });
-    
+
     res.json({
       success: true,
       message: `Game extended by ${extensionMinutes} minutes`,
-      newEndTime: newEndTime.toISOString()
+      newEndTime: newEndTime.toISOString(),
     });
-    
   } catch (error: any) {
     console.error("Error extending game:", error);
     res.status(500).json({error: "Failed to extend game", details: error.message});
@@ -189,29 +187,28 @@ export const extendGame = async (req: AuthenticatedRequest, res: Response): Prom
 export const getGameDetails = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {gameId} = req.params;
-    
+
     const gameRef = db.collection("quiz").doc(gameId);
     const gameDoc = await gameRef.get();
-    
+
     if (!gameDoc.exists) {
       res.status(404).json({error: "Game not found"});
       return;
     }
-    
+
     const gameData: any = {id: gameDoc.id, ...gameDoc.data()};
-    
+
     // Get participants
     const participantsSnapshot = await gameRef.collection("participants").get();
-    const participants = participantsSnapshot.docs.map(doc => ({
+    const participants = participantsSnapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
-    
+
     gameData.participants = participants;
     gameData.participantCount = participants.length;
-    
+
     res.json(gameData);
-    
   } catch (error: any) {
     console.error("Error getting game details:", error);
     res.status(500).json({error: "Failed to get game details", details: error.message});
@@ -221,15 +218,15 @@ export const getGameDetails = async (req: AuthenticatedRequest, res: Response): 
 export const createEmergencyGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {secretPrompt, imageName, duration = 60} = req.body;
-    
+
     if (!secretPrompt || !imageName) {
       res.status(400).json({error: "Secret prompt and image name are required"});
       return;
     }
-    
+
     const gameId = `emergency-${Date.now()}`;
     const endTime = new Date(Date.now() + duration * 60 * 1000);
-    
+
     const gameData = {
       id: gameId,
       secretPrompt,
@@ -243,18 +240,17 @@ export const createEmergencyGame = async (req: AuthenticatedRequest, res: Respon
       type: "emergency",
       pot: 0,
       totalParticipants: 0,
-      averageScore: 0
+      averageScore: 0,
     };
-    
+
     await db.collection("quiz").doc(gameId).set(gameData);
-    
+
     res.json({
       success: true,
       message: "Emergency game created successfully",
       gameId: gameId,
-      gameData: gameData
+      gameData: gameData,
     });
-    
   } catch (error: any) {
     console.error("Error creating emergency game:", error);
     res.status(500).json({error: "Failed to create emergency game", details: error.message});
@@ -267,16 +263,16 @@ export const getSchedulerStatus = async (req: AuthenticatedRequest, res: Respons
   try {
     const config = await getSchedulerConfig();
     const stats = await getSchedulerStats();
-    
+
     if (!config || !stats) {
       res.status(500).json({error: "Failed to get scheduler status"});
       return;
     }
-    
+
     res.json({
       config,
       stats,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
     console.error("Error getting scheduler status:", error);
@@ -287,13 +283,13 @@ export const getSchedulerStatus = async (req: AuthenticatedRequest, res: Respons
 export const updateSchedulerSettings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const updates = req.body;
-    
+
     const success = await updateSchedulerConfig(updates);
-    
+
     if (success) {
       res.json({
         success: true,
-        message: "Scheduler settings updated successfully"
+        message: "Scheduler settings updated successfully",
       });
     } else {
       res.status(500).json({error: "Failed to update scheduler settings"});
@@ -307,19 +303,19 @@ export const updateSchedulerSettings = async (req: AuthenticatedRequest, res: Re
 export const toggleScheduler = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {enabled} = req.body;
-    
+
     let success;
     if (enabled) {
       success = await enableScheduler();
     } else {
       success = await disableScheduler();
     }
-    
+
     if (success) {
       res.json({
         success: true,
-        message: `Scheduler ${enabled ? 'enabled' : 'disabled'} successfully`,
-        enabled
+        message: `Scheduler ${enabled ? "enabled" : "disabled"} successfully`,
+        enabled,
       });
     } else {
       res.status(500).json({error: "Failed to toggle scheduler"});
@@ -333,12 +329,12 @@ export const toggleScheduler = async (req: AuthenticatedRequest, res: Response):
 export const getSchedulerHistory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
-    
+
     const history = await getSchedulerRunHistory(limit);
-    
+
     res.json({
       history,
-      total: history.length
+      total: history.length,
     });
   } catch (error: any) {
     console.error("Error getting scheduler history:", error);
@@ -349,16 +345,16 @@ export const getSchedulerHistory = async (req: AuthenticatedRequest, res: Respon
 export const runSchedulerManually = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const result = await forceSchedulerRun();
-    
+
     if (result.success) {
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } else {
       res.status(500).json({
         success: false,
-        error: result.message
+        error: result.message,
       });
     }
   } catch (error: any) {
@@ -370,20 +366,20 @@ export const runSchedulerManually = async (req: AuthenticatedRequest, res: Respo
 // OpenAI API Control Endpoints
 export const toggleOpenAIAPI = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { enabled } = req.body;
-    
+    const {enabled} = req.body;
+
     let success;
     if (enabled) {
       success = await enableOpenAIAPI();
     } else {
       success = await disableOpenAIAPI();
     }
-    
+
     if (success) {
       res.json({
         success: true,
-        message: `OpenAI API ${enabled ? 'enabled' : 'disabled'} successfully`,
-        enabled
+        message: `OpenAI API ${enabled ? "enabled" : "disabled"} successfully`,
+        enabled,
       });
     } else {
       res.status(500).json({error: "Failed to toggle OpenAI API"});
@@ -396,20 +392,20 @@ export const toggleOpenAIAPI = async (req: AuthenticatedRequest, res: Response):
 
 export const toggleAutoGameGeneration = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { enabled } = req.body;
-    
+    const {enabled} = req.body;
+
     let success;
     if (enabled) {
       success = await enableAutoGameGeneration();
     } else {
       success = await disableAutoGameGeneration();
     }
-    
+
     if (success) {
       res.json({
         success: true,
-        message: `Auto game generation ${enabled ? 'enabled' : 'disabled'} successfully`,
-        enabled
+        message: `Auto game generation ${enabled ? "enabled" : "disabled"} successfully`,
+        enabled,
       });
     } else {
       res.status(500).json({error: "Failed to toggle auto game generation"});
@@ -422,20 +418,20 @@ export const toggleAutoGameGeneration = async (req: AuthenticatedRequest, res: R
 
 export const updateDailyImageLimit = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { limit } = req.body;
-    
+    const {limit} = req.body;
+
     if (!limit || limit < 0) {
       res.status(400).json({error: "Valid limit number is required"});
       return;
     }
-    
+
     const success = await setDailyImageLimit(limit);
-    
+
     if (success) {
       res.json({
         success: true,
         message: `Daily image limit set to ${limit}`,
-        limit
+        limit,
       });
     } else {
       res.status(500).json({error: "Failed to update daily image limit"});
@@ -449,11 +445,11 @@ export const updateDailyImageLimit = async (req: AuthenticatedRequest, res: Resp
 export const resetDailyImageCounter = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const success = await resetDailyImageCount();
-    
+
     if (success) {
       res.json({
         success: true,
-        message: "Daily image counter reset successfully"
+        message: "Daily image counter reset successfully",
       });
     } else {
       res.status(500).json({error: "Failed to reset daily image counter"});
@@ -468,7 +464,7 @@ export const getImageGenerationStatus = async (req: AuthenticatedRequest, res: R
   try {
     const limitCheck = await checkDailyImageLimit();
     const config = await getSchedulerConfig();
-    
+
     res.json({
       success: true,
       data: {
@@ -477,8 +473,8 @@ export const getImageGenerationStatus = async (req: AuthenticatedRequest, res: R
         limit: limitCheck.limit,
         openaiApiEnabled: config?.openaiApiEnabled || false,
         autoGameGenerationEnabled: config?.autoGameGenerationEnabled || false,
-        manualApprovalRequired: config?.manualApprovalRequired || false
-      }
+        manualApprovalRequired: config?.manualApprovalRequired || false,
+      },
     });
   } catch (error: any) {
     console.error("Error getting image generation status:", error);

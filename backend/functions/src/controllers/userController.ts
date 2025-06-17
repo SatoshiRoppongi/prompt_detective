@@ -63,48 +63,47 @@ export const deleteUser = async (req: Request, res: Response) => {
 
 export const getUserProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
-    
+    const {walletAddress} = req.params;
+
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
 
     const profile = await userService.getUserProfile(walletAddress);
-    
+
     if (!profile) {
       res.status(404).json({
         success: false,
-        error: "User profile not found"
+        error: "User profile not found",
       });
       return;
     }
 
     res.json({
       success: true,
-      data: profile
+      data: profile,
     });
-
   } catch (error: any) {
-    console.error('Error in getUserProfile:', error);
+    console.error("Error in getUserProfile:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get user profile"
+      error: error.message || "Failed to get user profile",
     });
   }
 };
 
 export const getUserStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
-    
+    const {walletAddress} = req.params;
+
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
@@ -113,7 +112,7 @@ export const getUserStats = async (req: Request, res: Response): Promise<void> =
     if (!user || !user.id) {
       res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
       return;
     }
@@ -122,27 +121,26 @@ export const getUserStats = async (req: Request, res: Response): Promise<void> =
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
-
   } catch (error: any) {
-    console.error('Error in getUserStats:', error);
+    console.error("Error in getUserStats:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get user stats"
+      error: error.message || "Failed to get user stats",
     });
   }
 };
 
 export const getUserHistory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
-    const { limit } = req.query;
-    
+    const {walletAddress} = req.params;
+    const {limit} = req.query;
+
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
@@ -151,7 +149,7 @@ export const getUserHistory = async (req: Request, res: Response): Promise<void>
     if (!user || !user.id) {
       res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
       return;
     }
@@ -163,27 +161,26 @@ export const getUserHistory = async (req: Request, res: Response): Promise<void>
       success: true,
       data: {
         history,
-        count: history.length
-      }
+        count: history.length,
+      },
     });
-
   } catch (error: any) {
-    console.error('Error in getUserHistory:', error);
+    console.error("Error in getUserHistory:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get user history"
+      error: error.message || "Failed to get user history",
     });
   }
 };
 
 export const getUserAchievements = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
-    
+    const {walletAddress} = req.params;
+
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
@@ -192,7 +189,7 @@ export const getUserAchievements = async (req: Request, res: Response): Promise<
     if (!user || !user.id) {
       res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
       return;
     }
@@ -201,27 +198,26 @@ export const getUserAchievements = async (req: Request, res: Response): Promise<
 
     res.json({
       success: true,
-      data: achievements
+      data: achievements,
     });
-
   } catch (error: any) {
-    console.error('Error in getUserAchievements:', error);
+    console.error("Error in getUserAchievements:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to get user achievements"
+      error: error.message || "Failed to get user achievements",
     });
   }
 };
 
 export const updateUserPreferences = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.params;
-    const { preferences } = req.body;
-    
+    const {walletAddress} = req.params;
+    const {preferences} = req.body;
+
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
@@ -230,35 +226,34 @@ export const updateUserPreferences = async (req: Request, res: Response): Promis
     if (!user || !user.id) {
       res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
       return;
     }
 
-    await userService.updateUser(user.id, { preferences });
+    await userService.updateUser(user.id, {preferences});
 
     res.json({
       success: true,
-      message: "User preferences updated successfully"
+      message: "User preferences updated successfully",
     });
-
   } catch (error: any) {
-    console.error('Error in updateUserPreferences:', error);
+    console.error("Error in updateUserPreferences:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to update user preferences"
+      error: error.message || "Failed to update user preferences",
     });
   }
 };
 
 export const updateLastLogin = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { walletAddress } = req.body;
-    
+    const {walletAddress} = req.body;
+
     if (!walletAddress) {
       res.status(400).json({
         success: false,
-        error: "Wallet address is required"
+        error: "Wallet address is required",
       });
       return;
     }
@@ -267,14 +262,13 @@ export const updateLastLogin = async (req: Request, res: Response): Promise<void
 
     res.json({
       success: true,
-      message: "Last login updated successfully"
+      message: "Last login updated successfully",
     });
-
   } catch (error: any) {
-    console.error('Error in updateLastLogin:', error);
+    console.error("Error in updateLastLogin:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to update last login"
+      error: error.message || "Failed to update last login",
     });
   }
 };

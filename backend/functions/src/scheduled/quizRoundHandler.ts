@@ -7,14 +7,14 @@
 import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 import {v4 as uuidv4} from "uuid";
-import { getCurrentConfig, logCurrentConfig } from '../config/e2eConfig';
+import {getCurrentConfig, logCurrentConfig} from "../config/e2eConfig";
 
 dotenv.config();
 
 import {QuizWithParticipant, getActiveQuiz, endGame, completeGame, createGameFromGeneration} from "../services/quizService";
 import {
   getSchedulerConfig,
-  recordSchedulerRun
+  recordSchedulerRun,
 } from "../services/schedulerService";
 import {calculateQuizResults, updateDistributionStatus} from "../services/resultCalculationService";
 import {distributeQuizPrizes} from "../services/distributionService";
@@ -40,7 +40,7 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
     // Transition to scoring phase
     const gameTimer = await getGameTimer(activeQuiz.id);
     if (gameTimer && gameTimer.phase !== GamePhase.SCORING) {
-      await transitionPhase(gameTimer, GamePhase.SCORING, 'condition', 'Quiz finalization started');
+      await transitionPhase(gameTimer, GamePhase.SCORING, "condition", "Quiz finalization started");
     }
 
     // Calculate comprehensive quiz results
@@ -51,7 +51,7 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
     if (gameTimer) {
       const updatedTimer = await getGameTimer(activeQuiz.id);
       if (updatedTimer) {
-        await transitionPhase(updatedTimer, GamePhase.RESULTS, 'condition', 'Results calculated');
+        await transitionPhase(updatedTimer, GamePhase.RESULTS, "condition", "Results calculated");
       }
     }
 
@@ -71,25 +71,25 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
         // Transition to distribution phase
         const updatedTimer = await getGameTimer(activeQuiz.id);
         if (updatedTimer) {
-          await transitionPhase(updatedTimer, GamePhase.DISTRIBUTION, 'condition', 'Starting prize distribution');
+          await transitionPhase(updatedTimer, GamePhase.DISTRIBUTION, "condition", "Starting prize distribution");
         }
 
         // Use new comprehensive distribution service
         const distributionSummary = await distributeQuizPrizes(quizResult);
-        
-        if (distributionSummary.status === 'completed') {
+
+        if (distributionSummary.status === "completed") {
           console.log(`🎉 All prizes distributed successfully for quiz ${activeQuiz.id}`);
-          await updateDistributionStatus(activeQuiz.id, 'distributed');
-        } else if (distributionSummary.status === 'partial') {
+          await updateDistributionStatus(activeQuiz.id, "distributed");
+        } else if (distributionSummary.status === "partial") {
           console.log(`⚠️ Partial distribution for quiz ${activeQuiz.id}: ${distributionSummary.successfulTransactions}/${distributionSummary.successfulTransactions + distributionSummary.failedTransactions} successful`);
-          await updateDistributionStatus(activeQuiz.id, 'failed', 
+          await updateDistributionStatus(activeQuiz.id, "failed",
             `Partial distribution: ${distributionSummary.failedTransactions} transactions failed`);
         } else {
           console.log(`❌ Distribution failed for quiz ${activeQuiz.id}`);
-          await updateDistributionStatus(activeQuiz.id, 'failed', 'All distribution transactions failed');
-          
+          await updateDistributionStatus(activeQuiz.id, "failed", "All distribution transactions failed");
+
           // Fallback to legacy system if new distribution fails completely
-          console.log('🔄 Attempting fallback distribution...');
+          console.log("🔄 Attempting fallback distribution...");
           const scores: [string, number][] = activeQuiz.participants.map((participant) => {
             return [participant.walletAddress, participant.score];
           });
@@ -99,45 +99,42 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
         // Mark game as completed with winner info
         const primaryWinner = quizResult.winners[0];
         await completeGame(activeQuiz.id, primaryWinner.walletAddress, primaryWinner.score);
-        
+
         // Transition to completed phase
         const finalTimer = await getGameTimer(activeQuiz.id);
         if (finalTimer) {
-          await transitionPhase(finalTimer, GamePhase.COMPLETED, 'condition', 'Quiz fully completed');
+          await transitionPhase(finalTimer, GamePhase.COMPLETED, "condition", "Quiz fully completed");
         }
-        
+
         console.log(`✅ Quiz ${activeQuiz.id} finalization completed`);
-        
       } catch (distributionError) {
         console.error(`❌ Distribution service error for quiz ${activeQuiz.id}:`, distributionError);
-        
+
         // Fallback to old distribution method
-        console.log('🔄 Falling back to legacy distribution system...');
+        console.log("🔄 Falling back to legacy distribution system...");
         try {
           for (const winner of quizResult.winners) {
             await distributeWinnings(activeQuiz.id, winner.walletAddress, winner.prize);
             console.log(`✅ Legacy distribution to ${winner.walletAddress}: ${winner.prize} lamports`);
           }
-          
-          await updateDistributionStatus(activeQuiz.id, 'distributed');
+
+          await updateDistributionStatus(activeQuiz.id, "distributed");
           const primaryWinner = quizResult.winners[0];
           await completeGame(activeQuiz.id, primaryWinner.walletAddress, primaryWinner.score);
-          
         } catch (legacyError) {
-          console.error(`❌ Legacy distribution also failed:`, legacyError);
-          await updateDistributionStatus(activeQuiz.id, 'failed', `Both new and legacy distribution failed: ${legacyError}`);
+          console.error("❌ Legacy distribution also failed:", legacyError);
+          await updateDistributionStatus(activeQuiz.id, "failed", `Both new and legacy distribution failed: ${legacyError}`);
         }
       }
     } else {
       console.log(`ℹ️ No distribution needed for quiz ${activeQuiz.id}`);
       await completeGame(activeQuiz.id, "", 0);
     }
-
   } catch (error) {
     console.error(`❌ Error in quiz finalization: ${error}`);
     // Update distribution status as failed
     if (activeQuiz.id) {
-      await updateDistributionStatus(activeQuiz.id, 'failed', `Finalization error: ${error}`);
+      await updateDistributionStatus(activeQuiz.id, "failed", `Finalization error: ${error}`);
     }
     throw error;
   }
@@ -147,26 +144,26 @@ const fixQuizResult = async (activeQuiz: QuizWithParticipant | null) => {
 export const runQuizGeneration = async (): Promise<{ success: boolean; error?: string; gamesGenerated?: number }> => {
   try {
     console.log("🎮 Starting quiz generation process");
-    
+
     // Log current E2E configuration
     logCurrentConfig();
     const e2eConfig = getCurrentConfig();
-    
+
     // Check scheduler configuration
     const config = await getSchedulerConfig();
     if (!config) {
       const error = "Failed to get scheduler configuration";
       console.error(error);
-      return { success: false, error };
+      return {success: false, error};
     }
-    
+
     if (!config.enabled) {
       const message = "Scheduler is disabled, skipping quiz generation";
       console.log(message);
       await recordSchedulerRun("skipped", message);
-      return { success: true, error: message, gamesGenerated: 0 };
+      return {success: true, error: message, gamesGenerated: 0};
     }
-    
+
     // Get current active quiz instead of latest
     const activeQuiz = await getActiveQuiz();
 
@@ -176,9 +173,9 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
       const message = `Active quiz has ${activeQuiz.participants.length} participants (minimum: ${minParticipants}), skipping finalization`;
       console.log(message);
       await recordSchedulerRun("skipped", message);
-      return { success: true, error: message, gamesGenerated: 0 };
+      return {success: true, error: message, gamesGenerated: 0};
     }
-    
+
     // クイズの締め処理を行う
     await fixQuizResult(activeQuiz);
 
@@ -187,7 +184,7 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
       const message = "Auto generation is disabled, only finalizing existing quiz";
       console.log(message);
       await recordSchedulerRun("success", message, 0);
-      return { success: true, error: message, gamesGenerated: 0 };
+      return {success: true, error: message, gamesGenerated: 0};
     }
 
     // 画像生成のお題となるプロンプトを生成する
@@ -197,7 +194,7 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
     if (!secretPrompt) {
       const error = "Failed to generate secret prompt";
       console.error(error);
-      return { success: false, error };
+      return {success: false, error};
     }
 
     // 画像にランダムな名前をつける
@@ -210,20 +207,20 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
         style: ImageStyle.VIVID,
         size: ImageSize.SQUARE,
         quality: ImageQuality.STANDARD,
-        purpose: 'quiz',
-        quizId: gameId
+        purpose: "quiz",
+        quizId: gameId,
       });
 
       console.log("Image generated and uploaded successfully with new service");
       console.log(`Image ID: ${generatedImage.id}, Status: ${generatedImage.status}`);
 
       // Use E2E configuration values for game creation
-      const gameDuration = (e2eConfig as any).ENABLE_SHORT_CYCLES ? 
-        e2eConfig.GAME_DURATION_MINUTES : 
+      const gameDuration = (e2eConfig as any).ENABLE_SHORT_CYCLES ?
+        e2eConfig.GAME_DURATION_MINUTES :
         config.defaultDuration;
-      
+
       console.log(`🎮 Creating game with ${gameDuration} minute duration (E2E mode: ${(e2eConfig as any).ENABLE_SHORT_CYCLES})`);
-      
+
       await createGameFromGeneration(
         secretPrompt,
         generatedImage.fileName, // Use the generated image filename
@@ -236,9 +233,9 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
       // Initialize Solana smart contract game
       try {
         await initializeSolanaGame(
-          gameId, 
-          config.defaultMinBet, 
-          config.defaultMaxParticipants, 
+          gameId,
+          config.defaultMinBet,
+          config.defaultMaxParticipants,
           config.defaultDuration
         );
         console.log(`✅ Solana game initialized for ID: ${gameId}`);
@@ -249,7 +246,7 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
       // Initialize game state management
       try {
         const gameTimer = await initializeGameState(gameId, config.defaultDuration / 60, true); // Convert minutes to hours
-        await transitionPhase(gameTimer, GamePhase.ACTIVE, 'condition', 'New quiz created and activated');
+        await transitionPhase(gameTimer, GamePhase.ACTIVE, "condition", "New quiz created and activated");
         console.log(`🎮 Game state initialized and activated for ID: ${gameId}`);
       } catch (error) {
         console.error(`❌ Failed to initialize game state: ${error}`);
@@ -257,15 +254,14 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
 
       console.log(`✅ New game created with ID: ${gameId}`);
       await recordSchedulerRun("success", undefined, 1);
-      return { success: true, gamesGenerated: 1 };
-      
+      return {success: true, gamesGenerated: 1};
     } catch (error: any) {
       console.error("Error generating image or creating game:", error);
-      return { success: false, error: error.message };
+      return {success: false, error: error.message};
     }
   } catch (error: any) {
     console.error("Error in quiz generation:", error);
-    return { success: false, error: error.message };
+    return {success: false, error: error.message};
   }
 };
 
@@ -275,13 +271,13 @@ export const scheduledQuizRoundHandler =
     timeZone("Asia/Tokyo").
     onRun(async () => {
       console.log("📅 Scheduled quiz round handler triggered");
-      
+
       const result = await runQuizGeneration();
-      
+
       if (!result.success && result.error && !result.error.includes("skipping") && !result.error.includes("disabled")) {
         await recordSchedulerRun("failed", result.error);
         console.error(`❌ Scheduled run failed: ${result.error}`);
       }
-      
+
       return null;
     });

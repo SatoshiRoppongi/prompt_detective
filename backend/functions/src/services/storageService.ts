@@ -1,7 +1,8 @@
 // services/storageService.ts
 import axios from "axios";
 import * as admin from "firebase-admin";
-// https://stackoverflow.com/questions/72928353/why-is-admin-firestore-fieldvalue-undefined-when-running-code-in-firebase-emulat
+// Why is admin.firestore.FieldValue undefined when running code in Firebase emulator
+// https://stackoverflow.com/questions/72928353/
 
 const bucket = admin.storage().bucket("gs://prompt-detective-backend.appspot.com");
 
@@ -10,7 +11,7 @@ export const getImageByName = async (name: string) => {
   if (name === "demo-apple.jpg" || name === "test-apple.jpg") {
     return "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=400&h=400&fit=crop";
   }
-  
+
   const filePath = `images/${name}`;
   const file = bucket.file(filePath);
 
