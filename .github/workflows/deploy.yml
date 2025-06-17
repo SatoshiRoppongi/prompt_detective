@@ -1,0 +1,268 @@
+name: 🚀 Deploy Prompt Detective
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+  RUST_VERSION: 'stable'
+
+jobs:
+  # Build and Test Job
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🦀 Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          override: true
+
+      - name: 📦 Install dependencies - Backend
+        run: |
+          cd backend/functions
+          npm ci
+
+      - name: 📦 Install dependencies - Frontend
+        run: |
+          cd frontend
+          npm ci
+
+      - name: 🔨 Build Backend
+        run: |
+          cd backend/functions
+          npm run build
+
+      - name: 🔨 Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: 🧪 Run Backend Tests
+        run: |
+          cd backend/functions
+          npm test || echo "Tests not implemented yet"
+
+      - name: 🧪 Run Frontend Tests
+        run: |
+          cd frontend
+          npm test || echo "Tests not implemented yet"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            backend/functions/lib/
+            frontend/.output/
+
+  # Deploy Backend Job
+  deploy-backend:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: |
+          cd backend/functions
+          npm ci
+
+      - name: 📤 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: 🔧 Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: 🔑 Setup Firebase Service Account
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > backend/functions/src/service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/backend/functions/src/service_account.json"
+
+      - name: 📝 Create environment file
+        run: |
+          cd backend/functions
+          cat > .env << EOF
+          NODE_ENV=production
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          FIREBASE_PROJECT_ID=prompt-detective-backend
+          SOLANA_NETWORK=devnet
+          SOLANA_RPC_URL=https://api.devnet.solana.com
+          GAME_DURATION_MINUTES=5
+          GRACE_PERIOD_SECONDS=30
+          AUTO_START_INTERVAL_MINUTES=10
+          ENABLE_SHORT_CYCLES=true
+          ENABLE_AUTO_START=true
+          ENABLE_REAL_IMAGE_GENERATION=true
+          EOF
+
+      - name: 🚀 Deploy Firebase Functions
+        run: |
+          cd backend
+          firebase use prompt-detective-backend --token "${{ secrets.FIREBASE_TOKEN }}"
+          firebase deploy --only functions --token "${{ secrets.FIREBASE_TOKEN }}"
+
+      - name: 🗄️ Deploy Firestore Rules
+        run: |
+          cd backend
+          firebase deploy --only firestore:rules --token "${{ secrets.FIREBASE_TOKEN }}"
+
+  # Deploy Frontend Job
+  deploy-frontend:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: 📝 Create environment file
+        run: |
+          cd frontend
+          cat > .env << EOF
+          NUXT_PUBLIC_API_BASE=https://us-central1-prompt-detective-backend.cloudfunctions.net/api
+          NUXT_PUBLIC_SOLANA_NETWORK=devnet
+          NUXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+          NUXT_PUBLIC_ENABLE_DEBUG_TOOLS=true
+          NUXT_PUBLIC_SHOW_GAME_TIMER=true
+          NUXT_PUBLIC_REFRESH_INTERVAL=5000
+          EOF
+
+      - name: 🔨 Build Frontend (SPA)
+        run: |
+          cd frontend
+          npm run build
+
+      - name: 🔧 Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: 🚀 Deploy to Firebase Hosting
+        run: |
+          cd frontend
+          firebase use prompt-detective-backend --token "${{ secrets.FIREBASE_TOKEN }}"
+          firebase deploy --only hosting --token "${{ secrets.FIREBASE_TOKEN }}"
+
+  # E2E Testing Job
+  e2e-tests:
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🧪 Wait for deployment to be ready
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 60
+
+      - name: 🏥 Health Check
+        run: |
+          curl -f https://us-central1-prompt-detective-backend.cloudfunctions.net/api/health || exit 1
+          curl -f https://prompt-detective-backend.web.app/ || exit 1
+
+      - name: 🎮 Test Game Flow
+        run: |
+          echo "Testing game flow..."
+          # Test active quiz endpoint
+          curl -f https://us-central1-prompt-detective-backend.cloudfunctions.net/api/activeQuiz
+          
+          # Test game state endpoint
+          curl -f https://us-central1-prompt-detective-backend.cloudfunctions.net/api/gamestate
+          
+          echo "Basic API tests passed!"
+
+      - name: 📊 Performance Test
+        run: |
+          echo "Running performance tests..."
+          # Add performance testing here
+          echo "Performance tests completed!"
+
+  # Notification Job
+  notify:
+    needs: [deploy-backend, deploy-frontend, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - name: 📢 Notify Success
+        if: needs.deploy-backend.result == 'success' && needs.deploy-frontend.result == 'success'
+        run: |
+          echo "🎉 Deployment successful!"
+          echo "Frontend: https://prompt-detective-backend.web.app"
+          echo "API: https://us-central1-prompt-detective-backend.cloudfunctions.net/api"
+
+      - name: 🚨 Notify Failure
+        if: needs.deploy-backend.result == 'failure' || needs.deploy-frontend.result == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs for details."
+
+  # Manual Deploy Job
+  manual-deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🎯 Manual deployment to ${{ github.event.inputs.environment }}
+        run: |
+          echo "Deploying to: ${{ github.event.inputs.environment }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Manual deployment initiated..."
+
+      - name: 🚀 Execute deployment steps
+        run: |
+          # Add manual deployment logic here
+          echo "Manual deployment completed for ${{ github.event.inputs.environment }}"

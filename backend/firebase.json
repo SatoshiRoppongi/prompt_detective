@@ -1,10 +1,7 @@
 {
   "firestore": {
     "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json",
-      "env": {
-         "GOOGLE_APPLICATION_CREDENTIALS": "./service_account.json"
-       }
+    "indexes": "firestore.indexes.json"
   },
   "functions": [
     {
@@ -22,5 +19,20 @@
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ]
+  ],
+  "emulators": {
+    "functions": {
+      "port": 5002
+    },
+    "firestore": {
+      "port": 8081
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4002
+    },
+    "hub": {
+      "port": 4402
+    }
+  }
 }

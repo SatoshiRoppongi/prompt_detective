@@ -1,6 +1,7 @@
 import { ref, computed, type Ref } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useGameState, GamePhase } from '~/composables/useGameState'
+import { getCurrentFrontendConfig, debugLog } from '~/config/e2eConfig'
 
 export interface LeaderboardEntry {
   rank: number
@@ -122,11 +123,16 @@ export const useLeaderboard = (quizId?: string, testActiveMode?: Ref<boolean>) =
       
       if (leaderboardResponse.success) {
         leaderboardData.value = leaderboardResponse.data
-        console.log('Leaderboard data:', leaderboardResponse.data)
-        console.log('Game timer:', gameTimer.value)
-        console.log('Current game phase:', currentPhase.value)
-        console.log('Is game active:', isGameActive.value)
-        console.log('Is game ended:', isGameEnded.value)
+        debugLog('Leaderboard data fetched', leaderboardResponse.data)
+        
+        const config = getCurrentFrontendConfig()
+        if (config.SHOW_DETAILED_LOGS) {
+          console.log('Leaderboard data:', leaderboardResponse.data)
+          console.log('Game timer:', gameTimer.value)
+          console.log('Current game phase:', currentPhase.value)
+          console.log('Is game active:', isGameActive.value)
+          console.log('Is game ended:', isGameEnded.value)
+        }
       } else {
         throw new Error(leaderboardResponse.error || 'Failed to fetch leaderboard')
       }

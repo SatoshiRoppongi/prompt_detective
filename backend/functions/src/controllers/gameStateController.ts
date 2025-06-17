@@ -46,7 +46,7 @@ export const getGameState = async (req: Request, res: Response): Promise<void> =
 export const initializeGameState = async (req: Request, res: Response): Promise<void> => {
   try {
     const { quizId } = req.params;
-    const { durationHours = 24, autoTransitions = true } = req.body;
+    const { durationMinutes, autoTransitions = true } = req.body;
     
     if (!quizId) {
       res.status(400).json({
@@ -57,11 +57,11 @@ export const initializeGameState = async (req: Request, res: Response): Promise<
     }
 
     console.log(`🎮 Initializing game state for quiz: ${quizId}`);
-    console.log(`📋 Parameters: durationHours=${durationHours}, autoTransitions=${autoTransitions}`);
+    console.log(`📋 Parameters: durationMinutes=${durationMinutes}, autoTransitions=${autoTransitions}`);
     
     const gameTimer = await gameStateService.initializeGameState(
       quizId,
-      durationHours,
+      durationMinutes,
       autoTransitions
     );
     

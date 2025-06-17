@@ -15,6 +15,15 @@ export interface SchedulerConfig {
   lastRunError?: string;
   nextScheduledRun?: admin.firestore.Timestamp;
   autoGeneration: boolean;
+  
+  // Cost control settings
+  openaiApiEnabled: boolean;
+  autoGameGenerationEnabled: boolean;
+  manualApprovalRequired: boolean;
+  dailyImageGenerationLimit: number;
+  currentDailyImageCount: number;
+  lastImageGenerationReset?: admin.firestore.Timestamp;
+  
   createdAt: admin.firestore.FieldValue;
   updatedAt: admin.firestore.FieldValue;
 }
@@ -45,6 +54,14 @@ export const getSchedulerConfig = async (): Promise<SchedulerConfig | null> => {
         defaultMinBet: 100000000, // 0.1 SOL
         defaultMaxParticipants: 100,
         autoGeneration: true,
+        
+        // Cost control defaults
+        openaiApiEnabled: true,
+        autoGameGenerationEnabled: true,
+        manualApprovalRequired: false,
+        dailyImageGenerationLimit: 10, // Conservative default
+        currentDailyImageCount: 0,
+        
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       };
@@ -215,6 +232,79 @@ export const disableScheduler = async (): Promise<boolean> => {
 
 export const updateSchedulerInterval = async (interval: string, timezone: string = "Asia/Tokyo"): Promise<boolean> => {
   return await updateSchedulerConfig({ interval, timezone });
+};
+
+// Cost control functions
+export const enableOpenAIAPI = async (): Promise<boolean> => {
+  return await updateSchedulerConfig({ openaiApiEnabled: true });
+};
+
+export const disableOpenAIAPI = async (): Promise<boolean> => {
+  return await updateSchedulerConfig({ openaiApiEnabled: false });
+};
+
+export const enableAutoGameGeneration = async (): Promise<boolean> => {
+  return await updateSchedulerConfig({ autoGameGenerationEnabled: true });
+};
+
+export const disableAutoGameGeneration = async (): Promise<boolean> => {
+  return await updateSchedulerConfig({ autoGameGenerationEnabled: false });
+};
+
+export const setDailyImageLimit = async (limit: number): Promise<boolean> => {
+  return await updateSchedulerConfig({ dailyImageGenerationLimit: limit });
+};
+
+export const resetDailyImageCount = async (): Promise<boolean> => {
+  return await updateSchedulerConfig({ 
+    currentDailyImageCount: 0,
+    lastImageGenerationReset: admin.firestore.FieldValue.serverTimestamp() as any
+  });
+};
+
+export const checkDailyImageLimit = async (): Promise<{ canGenerate: boolean; remaining: number; limit: number }> => {
+  try {
+    const config = await getSchedulerConfig();
+    if (!config) {
+      return { canGenerate: false, remaining: 0, limit: 0 };
+    }
+
+    // Check if we need to reset daily count (new day)
+    if (config.lastImageGenerationReset) {
+      const lastReset = config.lastImageGenerationReset.toDate();
+      const now = new Date();
+      const daysDiff = Math.floor((now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff >= 1) {
+        await resetDailyImageCount();
+        return { canGenerate: true, remaining: config.dailyImageGenerationLimit, limit: config.dailyImageGenerationLimit };
+      }
+    }
+
+    const remaining = Math.max(0, config.dailyImageGenerationLimit - config.currentDailyImageCount);
+    return {
+      canGenerate: remaining > 0 && config.openaiApiEnabled,
+      remaining,
+      limit: config.dailyImageGenerationLimit
+    };
+  } catch (error) {
+    console.error('Error checking daily image limit:', error);
+    return { canGenerate: false, remaining: 0, limit: 0 };
+  }
+};
+
+export const incrementDailyImageCount = async (): Promise<boolean> => {
+  try {
+    const configRef = db.collection("system").doc("scheduler");
+    await configRef.update({
+      currentDailyImageCount: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error incrementing daily image count:', error);
+    return false;
+  }
 };
 
 export const forceSchedulerRun = async (): Promise<{ success: boolean; message: string }> => {

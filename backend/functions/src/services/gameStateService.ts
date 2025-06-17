@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import { getCurrentConfig } from '../config/e2eConfig';
 
 const db = admin.firestore();
 
@@ -44,7 +45,7 @@ export interface GameStateHistory {
  */
 export const initializeGameState = async (
   quizId: string, 
-  durationHours: number = 24,
+  durationMinutes?: number,
   autoTransitions: boolean = true
 ): Promise<GameTimer> => {
   try {
@@ -58,15 +59,20 @@ export const initializeGameState = async (
     }
 
     console.log(`🆕 Creating new game state for quiz: ${quizId}`);
+    const config = getCurrentConfig();
+    const gameDuration = durationMinutes || config.GAME_DURATION_MINUTES;
+    
     const now = new Date();
-    const endTime = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+    const endTime = new Date(now.getTime() + gameDuration * 60 * 1000);
+    
+    console.log(`⏰ Game duration: ${gameDuration} minutes (E2E: ${(config as any).ENABLE_SHORT_CYCLES})`);
     
     const gameTimer: GameTimer = {
       quizId,
       phase: GamePhase.WAITING,
       startTime: now,
       endTime,
-      remainingTime: durationHours * 3600,
+      remainingTime: gameDuration * 60,
       lastUpdated: now,
       isActive: false,
       autoTransitions
@@ -160,9 +166,11 @@ const checkAndExecuteTransitions = async (gameTimer: GameTimer): Promise<void> =
 
     case GamePhase.ACTIVE:
       // 残り時間が少なくなったら猶予期間に遷移
-      if (gameTimer.remainingTime <= 300) { // 5 minutes grace period
+      const config = getCurrentConfig();
+      const graceThreshold = config.GRACE_PERIOD_SECONDS;
+      if (gameTimer.remainingTime <= graceThreshold) {
         newPhase = GamePhase.GRACE_PERIOD;
-        reason = 'Entering grace period (5 minutes remaining)';
+        reason = `Entering grace period (${graceThreshold} seconds remaining)`;
         shouldTransition = true;
       }
       break;

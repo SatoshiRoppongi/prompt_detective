@@ -326,7 +326,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   autoRefresh: true,
-  refreshInterval: 30000 // 30 seconds
+  refreshInterval: 10000 // 10 seconds for E2E testing
 })
 
 // Test mode for simulating active game state (must be defined before useLeaderboard)

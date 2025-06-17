@@ -9,7 +9,10 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "deploy:prod": "firebase use production && firebase deploy --only functions",
+    "deploy:staging": "firebase use staging && firebase deploy --only functions",
+    "logs": "firebase functions:log",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "engines": {
     "node": "18"

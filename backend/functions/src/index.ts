@@ -27,6 +27,7 @@ import * as resultController from "./controllers/resultController";
 import * as distributionController from "./controllers/distributionController";
 import * as gameStateController from "./controllers/gameStateController";
 import * as securityController from "./controllers/securityController";
+import * as adminController from "./controllers/adminController";
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -109,6 +110,24 @@ app.post("/security/ban/:walletAddress", securityController.banUser);
 app.get("/security/ban/:walletAddress", securityController.checkUserBanned);
 app.get("/security/stats", securityController.getSecurityStats);
 app.post("/security/token", securityController.generateSecureToken);
+
+// Admin API Endpoints
+app.get("/admin/system/status", adminController.getSystemStatus);
+app.get("/admin/scheduler/config", adminController.getSchedulerStatus);
+app.put("/admin/scheduler/config", adminController.updateSchedulerSettings);
+app.post("/admin/scheduler/toggle", adminController.toggleScheduler);
+app.post("/admin/scheduler/run", adminController.runSchedulerManually);
+app.get("/admin/scheduler/history", adminController.getSchedulerHistory);
+
+// OpenAI API Control Endpoints
+app.post("/admin/openai/toggle", adminController.toggleOpenAIAPI);
+app.post("/admin/generation/toggle", adminController.toggleAutoGameGeneration);
+app.put("/admin/images/limit", adminController.updateDailyImageLimit);
+app.post("/admin/images/reset", adminController.resetDailyImageCounter);
+app.get("/admin/images/status", adminController.getImageGenerationStatus);
+
+// Emergency Game Management
+app.post("/admin/games/emergency", adminController.createEmergencyGame);
 
 // Apply rate limiting to critical endpoints
 app.use("/participation", securityController.rateLimitMiddleware("quiz_participation"));

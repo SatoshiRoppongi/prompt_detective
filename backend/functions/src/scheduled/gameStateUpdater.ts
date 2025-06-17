@@ -1,15 +1,18 @@
 import * as functions from "firebase-functions";
 import { updateAllActiveGameStates } from "../services/gameStateService";
+import { getCurrentConfig } from '../config/e2eConfig';
 
 /**
  * 定期的にアクティブなゲーム状態を更新する
- * 毎分実行される
+ * E2Eテスト時は30秒毎、通常は1分毎
  */
 export const scheduledGameStateUpdater = functions.pubsub
-  .schedule('every 1 minutes')
+  .schedule('every 30 seconds')
   .timeZone('Asia/Tokyo')
   .onRun(async () => {
     console.log('🕐 Scheduled game state updater triggered');
+    const config = getCurrentConfig();
+    console.log(`⚙️  Running in ${(config as any).ENABLE_SHORT_CYCLES ? 'E2E' : 'production'} mode`);
     
     try {
       await updateAllActiveGameStates();

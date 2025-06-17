@@ -1,6 +1,6 @@
-# Deployment Guide - Prompt Detective
+# 🚀 Deployment Guide - Prompt Detective E2E Testing
 
-## Prerequisites
+## 📋 Prerequisites
 
 - Node.js 18+ and npm/yarn
 - Rust and Cargo
@@ -8,6 +8,8 @@
 - Anchor framework
 - Firebase CLI
 - Git
+- OpenAI API Key
+- Firebase Project with Blaze plan (for external API calls)
 
 ## Environment Setup
 

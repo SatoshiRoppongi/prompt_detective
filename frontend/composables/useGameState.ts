@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { useApi } from '~/composables/useApi'
+import { getCurrentFrontendConfig, debugLog } from '~/config/e2eConfig'
 
 export enum GamePhase {
   WAITING = "waiting",
@@ -100,7 +101,12 @@ export const useGameState = () => {
       
       if (response.success) {
         gameTimer.value = response.data
-        console.log('✅ Game state fetched successfully:', response.data)
+        debugLog('Game state fetched successfully', response.data)
+        
+        const config = getCurrentFrontendConfig()
+        if (config.SHOW_DETAILED_LOGS) {
+          console.log('✅ Game state fetched successfully:', response.data)
+        }
       } else {
         throw new Error(response.error || 'Failed to fetch game state')
       }

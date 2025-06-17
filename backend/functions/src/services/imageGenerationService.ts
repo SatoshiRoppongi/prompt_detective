@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import OpenAI from "openai";
 import { uploadImageFromUrl } from "./storageService";
 import { v4 as uuidv4 } from "uuid";
+import { checkDailyImageLimit, incrementDailyImageCount } from "./schedulerService";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -72,6 +73,14 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Ge
   
   console.log(`🎨 Starting image generation: ${imageId}`);
   console.log(`📝 Prompt: ${request.prompt}`);
+  
+  // Check daily image generation limit first
+  const limitCheck = await checkDailyImageLimit();
+  if (!limitCheck.canGenerate) {
+    throw new Error(`Image generation blocked: ${!limitCheck.canGenerate ? 'Daily limit exceeded or OpenAI API disabled' : 'OpenAI API disabled'}. Remaining: ${limitCheck.remaining}/${limitCheck.limit}`);
+  }
+  
+  console.log(`📊 Image generation limit check: ${limitCheck.remaining}/${limitCheck.limit} remaining`);
 
   // Create initial record
   const generatedImage: GeneratedImage = {
@@ -125,6 +134,9 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Ge
     generatedImage.metadata.estimatedCost = estimatedCost;
 
     await saveGeneratedImage(generatedImage);
+    
+    // Increment daily image count after successful generation
+    await incrementDailyImageCount();
 
     console.log(`✅ Image generated successfully: ${imageId}`);
     console.log(`⏱️ Processing time: ${processingTime}ms`);

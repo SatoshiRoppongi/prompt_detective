@@ -9,7 +9,14 @@ import {
   getSchedulerRunHistory,
   enableScheduler,
   disableScheduler,
-  forceSchedulerRun
+  forceSchedulerRun,
+  enableOpenAIAPI,
+  disableOpenAIAPI,
+  enableAutoGameGeneration,
+  disableAutoGameGeneration,
+  setDailyImageLimit,
+  resetDailyImageCount,
+  checkDailyImageLimit
 } from "../services/schedulerService";
 
 const db = admin.firestore();
@@ -357,5 +364,124 @@ export const runSchedulerManually = async (req: AuthenticatedRequest, res: Respo
   } catch (error: any) {
     console.error("Error running scheduler manually:", error);
     res.status(500).json({error: "Failed to run scheduler manually", details: error.message});
+  }
+};
+
+// OpenAI API Control Endpoints
+export const toggleOpenAIAPI = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { enabled } = req.body;
+    
+    let success;
+    if (enabled) {
+      success = await enableOpenAIAPI();
+    } else {
+      success = await disableOpenAIAPI();
+    }
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: `OpenAI API ${enabled ? 'enabled' : 'disabled'} successfully`,
+        enabled
+      });
+    } else {
+      res.status(500).json({error: "Failed to toggle OpenAI API"});
+    }
+  } catch (error: any) {
+    console.error("Error toggling OpenAI API:", error);
+    res.status(500).json({error: "Failed to toggle OpenAI API", details: error.message});
+  }
+};
+
+export const toggleAutoGameGeneration = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { enabled } = req.body;
+    
+    let success;
+    if (enabled) {
+      success = await enableAutoGameGeneration();
+    } else {
+      success = await disableAutoGameGeneration();
+    }
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: `Auto game generation ${enabled ? 'enabled' : 'disabled'} successfully`,
+        enabled
+      });
+    } else {
+      res.status(500).json({error: "Failed to toggle auto game generation"});
+    }
+  } catch (error: any) {
+    console.error("Error toggling auto game generation:", error);
+    res.status(500).json({error: "Failed to toggle auto game generation", details: error.message});
+  }
+};
+
+export const updateDailyImageLimit = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { limit } = req.body;
+    
+    if (!limit || limit < 0) {
+      res.status(400).json({error: "Valid limit number is required"});
+      return;
+    }
+    
+    const success = await setDailyImageLimit(limit);
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: `Daily image limit set to ${limit}`,
+        limit
+      });
+    } else {
+      res.status(500).json({error: "Failed to update daily image limit"});
+    }
+  } catch (error: any) {
+    console.error("Error updating daily image limit:", error);
+    res.status(500).json({error: "Failed to update daily image limit", details: error.message});
+  }
+};
+
+export const resetDailyImageCounter = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const success = await resetDailyImageCount();
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: "Daily image counter reset successfully"
+      });
+    } else {
+      res.status(500).json({error: "Failed to reset daily image counter"});
+    }
+  } catch (error: any) {
+    console.error("Error resetting daily image counter:", error);
+    res.status(500).json({error: "Failed to reset daily image counter", details: error.message});
+  }
+};
+
+export const getImageGenerationStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const limitCheck = await checkDailyImageLimit();
+    const config = await getSchedulerConfig();
+    
+    res.json({
+      success: true,
+      data: {
+        canGenerate: limitCheck.canGenerate,
+        remaining: limitCheck.remaining,
+        limit: limitCheck.limit,
+        openaiApiEnabled: config?.openaiApiEnabled || false,
+        autoGameGenerationEnabled: config?.autoGameGenerationEnabled || false,
+        manualApprovalRequired: config?.manualApprovalRequired || false
+      }
+    });
+  } catch (error: any) {
+    console.error("Error getting image generation status:", error);
+    res.status(500).json({error: "Failed to get image generation status", details: error.message});
   }
 };

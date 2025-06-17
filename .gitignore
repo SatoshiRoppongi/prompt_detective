@@ -47,12 +47,18 @@ ui-debug.log
 
 # Firebase
 service_account.json
+**/service_account.json
 .firebase/
 
 # Solana
 blockchain/prompt_detective/dist/
 blockchain/prompt_detective/test-ledger/
 blockchain/prompt_detective/target/
+**/test-ledger/
+**/*keypair.json
+
+# Testing files with credentials
+**/test_*.js
 
 # Frontend
 frontend/.nuxt/

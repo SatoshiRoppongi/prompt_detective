@@ -7,6 +7,7 @@
 import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 import {v4 as uuidv4} from "uuid";
+import { getCurrentConfig, logCurrentConfig } from '../config/e2eConfig';
 
 dotenv.config();
 
@@ -147,6 +148,10 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
   try {
     console.log("🎮 Starting quiz generation process");
     
+    // Log current E2E configuration
+    logCurrentConfig();
+    const e2eConfig = getCurrentConfig();
+    
     // Check scheduler configuration
     const config = await getSchedulerConfig();
     if (!config) {
@@ -212,14 +217,20 @@ export const runQuizGeneration = async (): Promise<{ success: boolean; error?: s
       console.log("Image generated and uploaded successfully with new service");
       console.log(`Image ID: ${generatedImage.id}, Status: ${generatedImage.status}`);
 
-      // Use configuration values for game creation
+      // Use E2E configuration values for game creation
+      const gameDuration = (e2eConfig as any).ENABLE_SHORT_CYCLES ? 
+        e2eConfig.GAME_DURATION_MINUTES : 
+        config.defaultDuration;
+      
+      console.log(`🎮 Creating game with ${gameDuration} minute duration (E2E mode: ${(e2eConfig as any).ENABLE_SHORT_CYCLES})`);
+      
       await createGameFromGeneration(
         secretPrompt,
         generatedImage.fileName, // Use the generated image filename
         gameId,
         config.defaultMinBet,
         config.defaultMaxParticipants,
-        config.defaultDuration
+        gameDuration
       );
 
       // Initialize Solana smart contract game
