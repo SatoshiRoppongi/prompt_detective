@@ -10,10 +10,7 @@ export default defineNuxtConfig({
         // @ts-expect-error
         config.plugins.push(vuetify({ autoImport: true }));
       });
-    },
-    // "@nuxt/typescript-build",
-    // "@nuxtjs/vuetify",
-    //...
+    }
   ],
   runtimeConfig: {
     public: {
@@ -24,17 +21,21 @@ export default defineNuxtConfig({
       mockSolana: process.env.MOCK_SOLANA
     },
   },
-  buildModules: ["@nuxt/typescript-build", "@nuxtjs/vuetify"],
   devtools: { enabled: true },
-  plugins: ["@/plugins/vuetify", "@/plugins/solana"],
+  plugins: ["~/plugins/vuetify", "~/plugins/solana"],
+  app: {
+    head: {
+      viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'theme-color', content: '#1976d2' }
+      ]
+    }
+  },
   vite: {
-    // plugings: [vuetify()],
-    resolve: {
-      alias: {
-        "@": "/frontend",
-      },
-    },
-
     vue: {
       template: {
         transformAssetUrls,

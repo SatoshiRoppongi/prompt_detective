@@ -1,4 +1,4 @@
-import { Connection, PublicKey, clusterApiUrl, Transaction, SendTransactionError, ComputeBudgetProgram} from "@solana/web3.js";
+import { Connection, PublicKey, clusterApiUrl, Transaction, SendTransactionError, ComputeBudgetProgram, SystemProgram} from "@solana/web3.js";
 import { defineNuxtPlugin } from "#app";
 import { serialize } from 'borsh';
 import { Buffer } from 'buffer';
@@ -39,56 +39,50 @@ export default defineNuxtPlugin((nuxtApp) => {
     PublicKey,
     async joinQuiz(wallet: any, programId: string, bet: number, fee: number) {
       try {
-        const programIdPubKey = new PublicKey(programId);
         const participantPubKey = wallet.publicKey;
-        console.log('programIdPubKey: ', programId)
-        console.log('participantPubKey', wallet.publicKey)
+        console.log('participantPubKey', wallet.publicKey);
+        console.log('bet:', bet, 'fee:', fee);
 
+        // Use a real treasury account for testing (this will be the quiz pot)
+        const treasuryPubKey = new PublicKey('Aqo52TCb2bvQ9AZoGrDo8iYQ9g5NHJoL5c44i3oVR6GE');
+        
         // convert from sol to lamports (1 sol = 1_000_000_000 lamports)
-        const betBigInt = BigInt(Math.round(bet * 1_000_000_000));
-        const feeBigInt = BigInt(Math.round(fee * 1_000_000_000));
+        const totalAmount = Math.round((bet + fee) * 1_000_000_000);
+        console.log('totalAmount in lamports:', totalAmount);
 
-        // serialize
-        const instructionData = Buffer.concat([
-          Buffer.from([1]),
-          serialize(SCHEMA, new JoinQuiz({ bet: betBigInt, fee: feeBigInt }))])
-        console.log("Serialized instruction data:", Buffer.from(instructionData).toString('hex'));
-
-        const pubkey = new PublicKey('Aqo52TCb2bvQ9AZoGrDo8iYQ9g5NHJoL5c44i3oVR6GE');
-
-        console.log('pubkeyyy: ', pubkey)
-
+        // Create actual SOL transfer transaction
         const transaction = new Transaction();
-        transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }));
-        transaction.add({
-          programId: programIdPubKey,
-          keys: [
-            { pubkey: participantPubKey, isSigner: true, isWritable: true },
-            //  { pubkey: programIdPubKey, isSigner: false, isWritable: true }
-            {
-              pubkey: pubkey,
-              isSigner: false,
-              isWritable: true
-            }
-          ],
-          data: Buffer.from(instructionData)
+        transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
+        
+        // Use Solana's built-in system transfer instruction
+        const systemInstruction = SystemProgram.transfer({
+          fromPubkey: participantPubKey,
+          toPubkey: treasuryPubKey,
+          lamports: totalAmount,
         });
+
+        transaction.add(systemInstruction);
 
         const { blockhash } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = participantPubKey;
 
+        // Sign and send the real transaction
+        console.log('Sending real transaction to devnet...');
         const signedTransaction = await wallet.signTransaction(transaction);
         const signature = await connection.sendRawTransaction(signedTransaction.serialize());
 
         const strategy = {
           signature: signature,
           blockhash: blockhash,
-          // lastValidBlockHeight: (await connection.getBlockHeight()) + 150
-          lastValidBlockHeight: (await connection.getBlockHeight())
+          lastValidBlockHeight: (await connection.getBlockHeight()) + 150
         };
 
+        console.log('Transaction sent, signature:', signature);
         await connection.confirmTransaction(strategy);
+        console.log('✅ Transaction confirmed! Quiz joined successfully');
+        
+        return signature;
 
       } catch (error) {
         if (error instanceof SendTransactionError) {

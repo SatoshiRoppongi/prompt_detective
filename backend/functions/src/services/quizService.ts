@@ -98,6 +98,44 @@ export const getActiveQuiz = async (): Promise<QuizWithParticipant | null> => {
   }
 };
 
+export const getQuizWithParticipants = async (quizId: string): Promise<QuizWithParticipant | null> => {
+  try {
+    const quizDoc = await quizzesCollection.doc(quizId).get();
+    
+    if (!quizDoc.exists) {
+      console.log("Quiz not found:", quizId);
+      return null;
+    }
+    
+    // Get participants for this quiz
+    const participantsSnapshot = await quizDoc.ref.collection("participants").get();
+    const participants: Participant[] = participantsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        walletAddress: data.walletAddress,
+        guessPrompt: data.guessPrompt,
+        score: data.score || 0,
+        bet: data.bet || 0,
+        betReturn: data.betReturn || 0,
+        createdAt: data.createdAt,
+        submissionTime: data.submissionTime
+      } as Participant;
+    });
+    
+    const quizData = quizDoc.data() as Quiz;
+    return {
+      id: quizDoc.id,
+      ...quizData,
+      participants: participants
+    } as QuizWithParticipant;
+    
+  } catch (error) {
+    console.error("Error getting quiz with participants:", error);
+    return null;
+  }
+};
+
 export const createGameFromGeneration = async (
   secretPrompt: string,
   imageName: string,

@@ -47,7 +47,6 @@ describe("prompt_detective", () => {
       expect(gameAccount.maxParticipants).to.equal(maxParticipants);
       expect(gameAccount.participantCount).to.equal(0);
       expect(gameAccount.totalPot.toString()).to.equal("0");
-
     } catch (error) {
       console.error("❌ Game initialization failed:", error);
       throw error;
@@ -145,9 +144,11 @@ describe("prompt_detective", () => {
       const gameAccount = await program.account.game.fetch(gamePda);
       console.log("Game participant count:", gameAccount.participantCount);
       console.log("Game total pot:", gameAccount.totalPot.toString());
-
     } catch (error) {
-      console.error("Join game failed (expected if not fully implemented):", error.message);
+      console.error(
+        "Join game failed (expected if not fully implemented):",
+        error.message
+      );
       // This might fail because the join_game function in our smart contract expects different account structure
     }
   });

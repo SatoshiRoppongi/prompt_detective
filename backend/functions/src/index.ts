@@ -26,6 +26,7 @@ import * as leaderboardController from "./controllers/leaderboardController";
 import * as resultController from "./controllers/resultController";
 import * as distributionController from "./controllers/distributionController";
 import * as gameStateController from "./controllers/gameStateController";
+import * as securityController from "./controllers/securityController";
 
 // User API Endpoints
 app.post("/users", userController.createUser);
@@ -33,6 +34,14 @@ app.get("/users/:id", userController.getUser);
 app.get("/users", userController.getUserByWalletAddress);
 app.put("/users/:id", userController.updateUser);
 app.delete("/users/:id", userController.deleteUser);
+
+// User Profile API Endpoints
+app.get("/users/:walletAddress/profile", userController.getUserProfile);
+app.get("/users/:walletAddress/stats", userController.getUserStats);
+app.get("/users/:walletAddress/history", userController.getUserHistory);
+app.get("/users/:walletAddress/achievements", userController.getUserAchievements);
+app.put("/users/:walletAddress/preferences", userController.updateUserPreferences);
+app.post("/users/login", userController.updateLastLogin);
 
 // Image API Endpoints
 app.get("/image", imageController.getImage);
@@ -81,6 +90,19 @@ app.put("/gamestate/:quizId/transition", gameStateController.transitionPhase);
 app.get("/gamestate", gameStateController.getActiveGameStates);
 app.put("/gamestate/update-all", gameStateController.updateAllGameStates);
 app.get("/gamestate/:quizId/history", gameStateController.getGameStateHistory);
+
+// Security API Endpoints
+app.use(securityController.securityMiddleware);
+app.post("/security/log", securityController.logSecurityEvent);
+app.post("/security/ratelimit", securityController.checkRateLimit);
+app.post("/security/validate", securityController.validateQuizSubmission);
+app.post("/security/ban/:walletAddress", securityController.banUser);
+app.get("/security/ban/:walletAddress", securityController.checkUserBanned);
+app.get("/security/stats", securityController.getSecurityStats);
+app.post("/security/token", securityController.generateSecureToken);
+
+// Apply rate limiting to critical endpoints
+app.use("/participation", securityController.rateLimitMiddleware("quiz_participation"));
 
 // TODO: cloud storageから画像を格納、取得するエンドポイントを追加する
 

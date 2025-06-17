@@ -1,5 +1,6 @@
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import { useApi } from '~/composables/useApi'
+import { useGameState, GamePhase } from '~/composables/useGameState'
 
 export interface LeaderboardEntry {
   rank: number
@@ -19,16 +20,44 @@ export interface LeaderboardData {
   userRank?: number
 }
 
-export const useLeaderboard = () => {
+export const useLeaderboard = (quizId?: string, testActiveMode?: Ref<boolean>) => {
   const leaderboardData = ref<LeaderboardData | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   
   const api = useApi()
+  const { currentPhase, canAcceptAnswers, fetchGameState, gameTimer } = useGameState()
   
-  // Computed properties
+  // Computed properties for game state awareness
+  const isGameActive = computed(() => {
+    // If test mode is enabled, use that
+    if (testActiveMode?.value) return true
+    
+    // If no game state is available, assume game is ended to show all information
+    if (!gameTimer.value) return false
+    return canAcceptAnswers.value || currentPhase.value === GamePhase.SCORING
+  })
+  
+  const isGameEnded = computed(() => {
+    // If test mode is enabled, game is not ended
+    if (testActiveMode?.value) return false
+    
+    // If no game state is available, assume game is ended to show all information
+    if (!gameTimer.value) return true
+    return currentPhase.value === GamePhase.RESULTS || currentPhase.value === GamePhase.COMPLETED
+  })
+  
   const topEntries = computed(() => {
     if (!leaderboardData.value) return []
+    
+    // During active games, limit to top 5 by bet amount and sort by bet
+    if (isGameActive.value) {
+      const sortedByBet = [...leaderboardData.value.entries]
+        .sort((a, b) => b.bet - a.bet)
+      return sortedByBet.slice(0, 5)
+    }
+    
+    // During ended games, show normal top 10 ranking
     return leaderboardData.value.entries.filter(entry => entry.rank <= 10)
   })
   
@@ -37,7 +66,28 @@ export const useLeaderboard = () => {
     return leaderboardData.value.entries.find(entry => entry.isCurrentUser)
   })
   
+  const shouldShowUserEntry = computed(() => {
+    if (!currentUserEntry.value || !isGameActive.value) return false
+    
+    // During active games, show user entry if not in top 5 by bet amount
+    const sortedByBet = [...(leaderboardData.value?.entries || [])]
+      .sort((a, b) => b.bet - a.bet)
+    const top5ByBet = sortedByBet.slice(0, 5)
+    
+    return !top5ByBet.find(entry => entry.isCurrentUser)
+  })
+  
   const isUserInTop10 = computed(() => {
+    if (isGameActive.value) {
+      // During active games, check if user is in top 5 by bet amount
+      if (!currentUserEntry.value) return false
+      const sortedByBet = [...(leaderboardData.value?.entries || [])]
+        .sort((a, b) => b.bet - a.bet)
+      const top5ByBet = sortedByBet.slice(0, 5)
+      return top5ByBet.find(entry => entry.isCurrentUser) !== undefined
+    }
+    
+    // During ended games, use normal ranking
     if (!leaderboardData.value?.userRank) return false
     return leaderboardData.value.userRank <= 10
   })
@@ -48,6 +98,7 @@ export const useLeaderboard = () => {
     error.value = null
     
     try {
+      // Fetch leaderboard data
       const params = new URLSearchParams()
       if (walletAddress) {
         params.append('walletAddress', walletAddress)
@@ -55,13 +106,24 @@ export const useLeaderboard = () => {
       
       const queryString = params.toString()
       const url = `/leaderboard/${quizId}${queryString ? `?${queryString}` : ''}`
+      const leaderboardResponse = await api.get(url)
       
-      const response = await api.get(url)
+      // Try to fetch game state but don't fail if it doesn't exist
+      try {
+        await fetchGameState(quizId)
+      } catch (gameStateError) {
+        console.warn('Game state not available:', gameStateError)
+      }
       
-      if (response.success) {
-        leaderboardData.value = response.data
+      if (leaderboardResponse.success) {
+        leaderboardData.value = leaderboardResponse.data
+        console.log('Leaderboard data:', leaderboardResponse.data)
+        console.log('Game timer:', gameTimer.value)
+        console.log('Current game phase:', currentPhase.value)
+        console.log('Is game active:', isGameActive.value)
+        console.log('Is game ended:', isGameEnded.value)
       } else {
-        throw new Error(response.error || 'Failed to fetch leaderboard')
+        throw new Error(leaderboardResponse.error || 'Failed to fetch leaderboard')
       }
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch leaderboard'
@@ -112,11 +174,36 @@ export const useLeaderboard = () => {
   }
   
   const getRankBadgeColor = (rank: number) => {
+    // During active games, use neutral colors only
+    if (isGameActive.value) {
+      return 'blue-grey lighten-2'
+    }
+    
+    // During ended games, use normal ranking colors
     if (rank === 1) return 'amber'
     if (rank === 2) return 'grey lighten-1' 
     if (rank === 3) return 'brown lighten-2'
     if (rank <= 10) return 'blue lighten-3'
     return 'grey lighten-3'
+  }
+  
+  const getBetRank = (entry: LeaderboardEntry) => {
+    if (!leaderboardData.value) return 0
+    
+    const sortedByBet = [...leaderboardData.value.entries]
+      .sort((a, b) => b.bet - a.bet)
+    
+    return sortedByBet.findIndex(e => e.walletAddress === entry.walletAddress) + 1
+  }
+  
+  const formatBetPercentage = (bet: number) => {
+    if (!leaderboardData.value) return '0%'
+    
+    const totalBets = leaderboardData.value.entries.reduce((sum, entry) => sum + entry.bet, 0)
+    if (totalBets === 0) return '0%'
+    
+    const percentage = (bet / totalBets) * 100
+    return `${percentage.toFixed(1)}%`
   }
   
   
@@ -130,6 +217,9 @@ export const useLeaderboard = () => {
     topEntries,
     currentUserEntry,
     isUserInTop10,
+    isGameActive,
+    isGameEnded,
+    shouldShowUserEntry,
     
     // Methods
     fetchLeaderboard,
@@ -138,6 +228,8 @@ export const useLeaderboard = () => {
     formatAddress,
     formatScore,
     formatTime,
-    getRankBadgeColor
+    getRankBadgeColor,
+    getBetRank,
+    formatBetPercentage
   }
 }

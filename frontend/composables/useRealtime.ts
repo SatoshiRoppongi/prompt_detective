@@ -32,6 +32,10 @@ export const useRealtime = () => {
 
   const connect = () => {
     try {
+      // Skip WebSocket connection in development/testing
+      console.log('⚠️ WebSocket disabled for Firebase Functions compatibility');
+      return;
+      
       const runtimeConfig = useRuntimeConfig();
       const serverUrl = runtimeConfig.public.apiBase || 'http://localhost:5001';
       

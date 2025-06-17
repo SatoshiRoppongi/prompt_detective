@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "rm -rf /tmp/nitro && nuxt dev",
+    "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -16,7 +16,7 @@
     "h3": "^1.11.1",
     "jayson": "^4.1.0",
     "jdenticon": "^3.3.0",
-    "nuxt": "^3.11.2",
+    "nuxt": "^3.12.2",
     "socket.io-client": "^4.8.1",
     "vue": "^3.4.27",
     "vue-router": "^4.3.2",

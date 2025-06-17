@@ -47,7 +47,7 @@
           </v-col>
         </v-row>
         <v-row>
-          <v-col cols="3">
+          <v-col cols="12" md="3">
             <v-card>
               <v-card-title>Advertisement</v-card-title>
               <v-card-text>
@@ -55,7 +55,7 @@
               </v-card-text>
             </v-card>
           </v-col>
-          <v-col cols="6">
+          <v-col cols="12" md="6">
             <v-container>
               <v-row>
                 <v-col>
@@ -126,7 +126,7 @@
               </v-row>
             </v-container>
           </v-col>
-          <v-col cols="3">
+          <v-col cols="12" md="3">
             <v-card>
               <v-card-title>
                 <div class="d-flex align-center justify-space-between w-100">
@@ -147,64 +147,41 @@
               <v-divider></v-divider>
               <v-card-text>
                 <v-row v-if="gameStatus === 'active' && timeRemaining" class="mb-3">
-                  <v-col cols="6" class="d-flex align-center">
+                  <v-col cols="12" sm="6" class="d-flex align-center">
                     <v-icon class="mr-2"> {{ mdiTimerOutline }}</v-icon>
                     残り時間
                   </v-col>
-                  <v-col cols="6" class="text-right">
+                  <v-col cols="12" sm="6" class="text-right text-sm-right">
                     <div class="headline text-primary"> {{ timeRemaining }}</div>
                   </v-col>
                 </v-row>
                 <v-row class="mb-3">
-                  <v-col cols="6" class="d-flex align-center">
+                  <v-col cols="12" sm="6" class="d-flex align-center">
                     <v-icon class="mr-2"> {{ mdiAccountMultiple }}</v-icon>
                     参加者数
                   </v-col>
-                  <v-col cols="6" class="text-right">
+                  <v-col cols="12" sm="6" class="text-right text-sm-right">
                     <div class="headline"> {{ summaryInfo.totalParticipants }} アドレス</div>
                   </v-col>
                 </v-row>
                 <v-row class="mb-3">
-                  <v-col cols="6" class="d-flex align-center">
+                  <v-col cols="12" sm="6" class="d-flex align-center">
                     <v-icon class="mr-2"> {{ mdiCurrencyUsd }}</v-icon>
                     ポット
                   </v-col>
-                  <v-col cols="6" class="text-right">
+                  <v-col cols="12" sm="6" class="text-right text-sm-right">
                     <div class="headline"> {{ summaryInfo.pot }} sol </div>
                   </v-col>
                 </v-row>
               </v-card-text>
-              <v-card-title>
-                {{ gameStatus === 'completed' || gameStatus === 'ended' ? '最終結果' : 'bet金額' }}
-              </v-card-title>
-              <v-divider></v-divider>
-              <v-card-text>
-                <v-row v-for="(participant, index) in summaryInfo.participants" v-bind:key="participant.walletAddress" class="mb-2">
-                  <strong class="mr-2">
-                    {{ index + 1 }}.
-                  </strong>
-                  <strong>
-                  {{ truncateAddress(participant.walletAddress) }}
-                  </strong>
-                  <!--
-                  TODO:
-                  ・折りたためるようにする
-                  ・上位数名のみ表示する？
-                  ・ユーザの居場所を表示する(赤字+アドレスの横に「(あなた)」にする)
-                  -->
-                  <v-progress-linear
-                  :model-value="(participant.bet / summaryInfo.pot) * 100"
-                  color="amber"
-                  height="20"
-                  >
-                  <template v-slot:default="{value}">
-                    <div class="mr-2"> {{ participant.bet }} SOL </div>
-                    <div> ({{ Math.ceil(value) }} %) </div>
-                  </template>
-                  </v-progress-linear>
-
-                </v-row>
-              </v-card-text>
+              <!-- Leaderboard -->
+              <Leaderboard 
+                v-if="quizId"
+                :quiz-id="quizId"
+                :wallet-address="walletAddress"
+                :auto-refresh="gameStatus === 'active'"
+                class="mt-3"
+              />
             </v-card>
           </v-col>
         </v-row>

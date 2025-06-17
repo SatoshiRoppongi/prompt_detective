@@ -12,13 +12,14 @@ import {Quiz} from "../services/quizService";
 
 
 export interface Participant {
-  // id?: string;
+  id?: string;
   walletAddress: string;
   guessPrompt: string;
   score: number; // similarityの方がいいか？
   bet: number;
   betReturn: number;
   createdAt: FieldValue;
+  submissionTime?: any;
 }
 
 export const createParticipant = async (

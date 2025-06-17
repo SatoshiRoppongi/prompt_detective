@@ -4,6 +4,16 @@
       <v-icon left>{{ mdiTrophy }}</v-icon>
       リーダーボード
       <v-spacer></v-spacer>
+      <!-- Debug: Force active game state for testing -->
+      <v-btn 
+        icon 
+        small 
+        @click="toggleTestMode"
+        :color="testActiveMode ? 'green' : 'orange'"
+        :title="testActiveMode ? 'Test: Disable Active Mode' : 'Test: Enable Active Mode'"
+      >
+        <v-icon>{{ testActiveMode ? mdiCheckCircle : mdiCog }}</v-icon>
+      </v-btn>
       <v-btn 
         icon 
         small 
@@ -15,9 +25,17 @@
     </v-card-title>
     
     <v-card-subtitle v-if="leaderboardData">
-      総参加者: {{ leaderboardData.totalParticipants }}名 | 
-      平均スコア: {{ formatScore(leaderboardData.averageScore) }}点 |
-      最高スコア: {{ formatScore(leaderboardData.topScore) }}点
+      <template v-if="isGameActive">
+        総参加者: {{ leaderboardData.totalParticipants }}名 | 
+        総賭け金: {{ totalBetsAmount.toFixed(2) }} SOL
+        <br><small>ゲーム状態: {{ currentPhase }} (アクティブ)</small>
+      </template>
+      <template v-else>
+        総参加者: {{ leaderboardData.totalParticipants }}名 | 
+        平均スコア: {{ formatScore(leaderboardData.averageScore) }}点 |
+        最高スコア: {{ formatScore(leaderboardData.topScore) }}点
+        <br><small>ゲーム状態: {{ currentPhase }} (非アクティブ)</small>
+      </template>
     </v-card-subtitle>
     
     <v-divider></v-divider>
@@ -56,15 +74,24 @@
               :color="getRankBadgeColor(entry.rank)"
               size="32"
             >
-              <v-icon v-if="entry.rank === 1" color="white">
-                {{ mdiTrophy }}
-              </v-icon>
-              <v-icon v-else-if="entry.rank <= 3" color="white">
-                {{ mdiMedal }}
-              </v-icon>
-              <span v-else class="white--text font-weight-bold">
-                {{ entry.rank }}
-              </span>
+              <!-- During active games, show bet rank only -->
+              <template v-if="isGameActive">
+                <span class="white--text font-weight-bold">
+                  {{ getBetRank(entry) }}
+                </span>
+              </template>
+              <!-- During ended games, show ranking icons -->
+              <template v-else>
+                <v-icon v-if="entry.rank === 1" color="white">
+                  {{ mdiTrophy }}
+                </v-icon>
+                <v-icon v-else-if="entry.rank <= 3" color="white">
+                  {{ mdiMedal }}
+                </v-icon>
+                <span v-else class="white--text font-weight-bold">
+                  {{ entry.rank }}
+                </span>
+              </template>
             </v-avatar>
           </v-list-item-avatar>
           
@@ -85,33 +112,65 @@
             
             <v-list-item-subtitle>
               <div class="d-flex justify-space-between">
-                <span>スコア: {{ formatScore(entry.score) }}点</span>
-                <span>賭け金: {{ entry.bet }} SOL</span>
-                <span>{{ formatTime(entry.submissionTime) }}</span>
+                <!-- During active games, hide scores -->
+                <template v-if="isGameActive">
+                  <span>賭け金: {{ entry.bet }} SOL ({{ formatBetPercentage(entry.bet) }})</span>
+                  <span>{{ formatTime(entry.submissionTime) }}</span>
+                </template>
+                <!-- During ended games, show full info -->
+                <template v-else>
+                  <span>スコア: {{ formatScore(entry.score) }}点</span>
+                  <span>賭け金: {{ entry.bet }} SOL</span>
+                  <span>{{ formatTime(entry.submissionTime) }}</span>
+                </template>
               </div>
             </v-list-item-subtitle>
           </v-list-item-content>
           
           <v-list-item-action>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  icon
-                  small
-                  v-bind="attrs"
-                  v-on="on"
-                  @click="showPrompt(entry)"
-                >
-                  <v-icon>{{ mdiEye }}</v-icon>
-                </v-btn>
-              </template>
-              <span>回答を見る</span>
-            </v-tooltip>
+            <!-- During active games, only allow viewing own prompt -->
+            <template v-if="isGameActive">
+              <v-tooltip bottom v-if="entry.isCurrentUser">
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    icon
+                    small
+                    v-bind="attrs"
+                    v-on="on"
+                    @click="showPrompt(entry)"
+                  >
+                    <v-icon>{{ mdiEye }}</v-icon>
+                  </v-btn>
+                </template>
+                <span>自分の回答を見る</span>
+              </v-tooltip>
+              <!-- Placeholder for other users during active games -->
+              <v-btn v-else icon small disabled>
+                <v-icon>{{ mdiEyeOff }}</v-icon>
+              </v-btn>
+            </template>
+            <!-- During ended games, allow viewing all prompts -->
+            <template v-else>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    icon
+                    small
+                    v-bind="attrs"
+                    v-on="on"
+                    @click="showPrompt(entry)"
+                  >
+                    <v-icon>{{ mdiEye }}</v-icon>
+                  </v-btn>
+                </template>
+                <span>回答を見る</span>
+              </v-tooltip>
+            </template>
           </v-list-item-action>
         </v-list-item>
         
-        <!-- Current User (if not in top 10) -->
-        <template v-if="currentUserEntry && !isUserInTop10">
+        <!-- Current User (if not in displayed entries) -->
+        <template v-if="shouldShowUserEntry">
           <v-divider class="my-2"></v-divider>
           <v-list-item
             class="primary lighten-4"
@@ -120,7 +179,12 @@
             <v-list-item-avatar>
               <v-avatar color="primary" size="32">
                 <span class="white--text font-weight-bold">
-                  {{ currentUserEntry.rank }}
+                  <template v-if="isGameActive">
+                    {{ getBetRank(currentUserEntry) }}
+                  </template>
+                  <template v-else>
+                    {{ currentUserEntry.rank }}
+                  </template>
                 </span>
               </v-avatar>
             </v-list-item-avatar>
@@ -137,12 +201,35 @@
               
               <v-list-item-subtitle>
                 <div class="d-flex justify-space-between">
-                  <span>スコア: {{ formatScore(currentUserEntry.score) }}点</span>
-                  <span>賭け金: {{ currentUserEntry.bet }} SOL</span>
-                  <span>{{ formatTime(currentUserEntry.submissionTime) }}</span>
+                  <template v-if="isGameActive">
+                    <span>賭け金: {{ currentUserEntry.bet }} SOL ({{ formatBetPercentage(currentUserEntry.bet) }})</span>
+                    <span>{{ formatTime(currentUserEntry.submissionTime) }}</span>
+                  </template>
+                  <template v-else>
+                    <span>スコア: {{ formatScore(currentUserEntry.score) }}点</span>
+                    <span>賭け金: {{ currentUserEntry.bet }} SOL</span>
+                    <span>{{ formatTime(currentUserEntry.submissionTime) }}</span>
+                  </template>
                 </div>
               </v-list-item-subtitle>
             </v-list-item-content>
+            
+            <v-list-item-action>
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn
+                    icon
+                    small
+                    v-bind="attrs"
+                    v-on="on"
+                    @click="showPrompt(currentUserEntry)"
+                  >
+                    <v-icon>{{ mdiEye }}</v-icon>
+                  </v-btn>
+                </template>
+                <span>自分の回答を見る</span>
+              </v-tooltip>
+            </v-list-item-action>
           </v-list-item>
         </template>
       </v-list>
@@ -160,7 +247,12 @@
   <v-dialog v-model="promptDialog" max-width="500px">
     <v-card v-if="selectedEntry">
       <v-card-title>
-        {{ formatAddress(selectedEntry.walletAddress) }} の回答
+        <template v-if="selectedEntry.isCurrentUser">
+          あなたの回答
+        </template>
+        <template v-else>
+          {{ formatAddress(selectedEntry.walletAddress) }} の回答
+        </template>
       </v-card-title>
       
       <v-card-text>
@@ -173,9 +265,19 @@
         ></v-textarea>
         
         <div class="mt-2">
-          <strong>スコア:</strong> {{ formatScore(selectedEntry.score) }}点<br>
-          <strong>順位:</strong> {{ selectedEntry.rank }}位<br>
-          <strong>投稿時刻:</strong> {{ formatTime(selectedEntry.submissionTime) }}
+          <!-- During active games, hide score information -->
+          <template v-if="isGameActive">
+            <strong>賭け金:</strong> {{ selectedEntry.bet }} SOL ({{ formatBetPercentage(selectedEntry.bet) }})<br>
+            <strong>ベット順位:</strong> {{ getBetRank(selectedEntry) }}位<br>
+            <strong>投稿時刻:</strong> {{ formatTime(selectedEntry.submissionTime) }}
+          </template>
+          <!-- During ended games, show full information -->
+          <template v-else>
+            <strong>スコア:</strong> {{ formatScore(selectedEntry.score) }}点<br>
+            <strong>順位:</strong> {{ selectedEntry.rank }}位<br>
+            <strong>賭け金:</strong> {{ selectedEntry.bet }} SOL<br>
+            <strong>投稿時刻:</strong> {{ formatTime(selectedEntry.submissionTime) }}
+          </template>
         </div>
       </v-card-text>
       
@@ -188,14 +290,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useLeaderboard } from '~/composables/useLeaderboard'
 import { 
   mdiTrophy, 
   mdiRefresh, 
   mdiMedal, 
   mdiAccount, 
-  mdiEye 
+  mdiEye,
+  mdiEyeOff,
+  mdiCog,
+  mdiCheckCircle
 } from '@mdi/js'
 
 interface Props {
@@ -210,6 +315,9 @@ const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 30000 // 30 seconds
 })
 
+// Test mode for simulating active game state (must be defined before useLeaderboard)
+const testActiveMode = ref(false)
+
 const {
   leaderboardData,
   isLoading,
@@ -217,19 +325,38 @@ const {
   topEntries,
   currentUserEntry,
   isUserInTop10,
+  shouldShowUserEntry,
+  isGameActive,
+  isGameEnded,
   fetchLeaderboard,
   formatAddress,
   formatScore,
   formatTime,
-  getRankBadgeColor
-} = useLeaderboard()
+  getRankBadgeColor,
+  getBetRank,
+  formatBetPercentage
+} = useLeaderboard(props.quizId, testActiveMode)
+
+const { currentPhase } = useGameState()
 
 const promptDialog = ref(false)
 const selectedEntry = ref(null)
 let refreshTimer: NodeJS.Timeout | null = null
 
+// Computed property for total bets
+const totalBetsAmount = computed(() => {
+  if (!leaderboardData.value) return 0
+  return leaderboardData.value.entries.reduce((sum, entry) => sum + entry.bet, 0)
+})
+
 const refresh = async () => {
   await fetchLeaderboard(props.quizId, props.walletAddress)
+}
+
+// Toggle test mode for simulating active game state
+const toggleTestMode = () => {
+  testActiveMode.value = !testActiveMode.value
+  console.log('Test active mode:', testActiveMode.value ? 'ON' : 'OFF')
 }
 
 const showPrompt = (entry: any) => {
