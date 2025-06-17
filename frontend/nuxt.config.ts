@@ -3,9 +3,6 @@ import vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 export default defineNuxtConfig({
   // Use SPA mode with real-time client-side features
   ssr: false,
-  nitro: {
-    preset: 'firebase-hosting'
-  },
   build: {
     transpile: ["vuetify"],
   },
