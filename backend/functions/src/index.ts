@@ -144,12 +144,15 @@ exports.scheduledDistributes = sendTransaction.scheduledDistributes;
 
 // secret promptとimageの生成
 // TODO: to be implemented
+// Temporarily disabled due to Cloud Scheduler permissions
+/*
 import {scheduledQuizRoundHandler} from "./scheduled/quizRoundHandler";
 exports.quizRoundHandler = scheduledQuizRoundHandler;
 
 // Game state updater
 import {scheduledGameStateUpdater} from "./scheduled/gameStateUpdater";
 exports.gameStateUpdater = scheduledGameStateUpdater;
+*/
 
 // import * as cleanup from "./scheduled/cleanup";
 // exports.cleanupOldUsers = cleanup.cleanupOldUsers;
