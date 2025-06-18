@@ -150,6 +150,14 @@ jobs:
           ENABLE_REAL_IMAGE_GENERATION=true
           EOF
 
+      - name: 🧹 Clean up old functions (if needed)
+        run: |
+          cd backend
+          firebase use prompt-detective-backend
+          # Delete scheduled functions that were temporarily disabled
+          firebase functions:delete gameStateUpdater --region us-central1 --force || echo "Function gameStateUpdater not found or already deleted"
+          firebase functions:delete quizRoundHandler --region us-central1 --force || echo "Function quizRoundHandler not found or already deleted"
+
       - name: 🚀 Deploy Firebase Functions
         run: |
           cd backend
